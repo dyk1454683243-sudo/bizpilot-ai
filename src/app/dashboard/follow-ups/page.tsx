@@ -21,6 +21,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import Tabs from '@/components/ui/Tabs';
+import { useToast } from '@/contexts/ToastContext';
 
 import { mockLeads, mockMessageTemplates } from '@/lib/mock-data';
 import { TONE_OPTIONS } from '@/lib/constants';
@@ -45,6 +46,7 @@ const TEMPLATE_TABS = [
 ];
 
 export default function FollowUpsPage() {
+  const { showToast } = useToast();
   // Leads that need follow-up
   const pendingLeads = useMemo(
     () => mockLeads.filter((l) => l.status === 'new' || l.status === 'contacted' || l.status === 'hot'),
@@ -71,12 +73,14 @@ export default function FollowUpsPage() {
     );
     setGeneratedMessage(msg);
     setIsGenerating(false);
+    showToast('AI follow-up message generated successfully!', 'success');
   }
 
   // ── Copy to clipboard ────────────────────────────────────
   async function handleCopy(text: string, id: string) {
     try {
       await navigator.clipboard.writeText(text);
+      showToast('Message copied to clipboard!', 'success');
     } catch {
       // fallback
     }
@@ -89,6 +93,7 @@ export default function FollowUpsPage() {
     setFollowedUp((prev) => new Set(prev).add(leadId));
     setExpandedLeadId(null);
     setGeneratedMessage(null);
+    showToast('Lead marked as followed up!', 'success');
   }
 
   // ── Toggle expanded lead ──────────────────────────────────
@@ -327,7 +332,12 @@ export default function FollowUpsPage() {
                     </div>
                     <p className="text-sm text-slate-500 line-clamp-2">{tpl.body}</p>
                   </div>
-                  <Button variant="outline" size="sm" className="flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-shrink-0"
+                    onClick={() => showToast(`Template loaded for use (Simulated/Demo Mode)`, 'info')}
+                  >
                     <Send className="h-3.5 w-3.5 mr-1.5" /> Use
                   </Button>
                 </div>

@@ -20,6 +20,7 @@ import Card, { StatCard } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
+import { useToast } from '@/contexts/ToastContext';
 
 import { mockDashboardStats, mockAIReport, mockLeads, mockAppointments } from '@/lib/mock-data';
 import { formatCurrency, timeAgo, formatTime, getLeadStatusColor, getScoreColor, getGreeting } from '@/lib/utils';
@@ -49,6 +50,7 @@ function getActionIcon(action: string) {
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
+  const { showToast } = useToast();
   
   useEffect(() => setMounted(true), []);
 
@@ -131,10 +133,14 @@ export default function DashboardPage() {
 
           <div className="space-y-2 mb-4">
             {report.suggestedActions.slice(0, 3).map((action, idx) => (
-              <div key={idx} className="flex items-start gap-3 rounded-lg bg-white/70 backdrop-blur-sm border border-slate-100 px-4 py-3 transition-colors hover:bg-white">
+              <button
+                key={idx}
+                onClick={() => showToast(`Executing action: "${action}" (Simulated/Demo Mode)`, 'info')}
+                className="w-full text-left flex items-start gap-3 rounded-lg bg-white/70 backdrop-blur-sm border border-slate-100 hover:border-indigo-200 px-4 py-3 transition-all hover:bg-white hover:shadow-sm"
+              >
                 {getActionIcon(action)}
                 <span className="text-sm text-slate-700">{action}</span>
-              </div>
+              </button>
             ))}
           </div>
 

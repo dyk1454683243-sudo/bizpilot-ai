@@ -11,6 +11,7 @@ import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
 import { StatCard } from '@/components/ui/Card';
 import AppointmentForm from '@/components/forms/AppointmentForm';
+import { useToast } from '@/contexts/ToastContext';
 import {
   Calendar,
   CalendarDays,
@@ -85,6 +86,7 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
+  const { showToast } = useToast();
 
   const today = getToday();
 
@@ -123,26 +125,33 @@ export default function AppointmentsPage() {
 
   // Actions
   function confirmAppointment(id: string) {
+    const apt = appointments.find((a) => a.id === id);
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: 'confirmed' as AppointmentStatus } : a))
     );
+    showToast(`Appointment confirmed for ${apt?.leadName || 'client'}`, 'success');
   }
 
   function cancelAppointment(id: string) {
+    const apt = appointments.find((a) => a.id === id);
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: 'cancelled' as AppointmentStatus } : a))
     );
+    showToast(`Appointment cancelled for ${apt?.leadName || 'client'}`, 'warning');
   }
 
   function sendReminder(id: string) {
+    const apt = appointments.find((a) => a.id === id);
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, reminderSent: true } : a))
     );
+    showToast(`SMS Reminder simulated to ${apt?.leadName || 'client'} (Demo Mode)`, 'info');
   }
 
   function handleNewAppointment(appointment: Appointment) {
     setAppointments((prev) => [appointment, ...prev]);
     setIsFormOpen(false);
+    showToast(`New appointment scheduled for ${appointment.leadName}`, 'success');
   }
 
   function handleReschedule(appointment: Appointment) {
@@ -150,6 +159,7 @@ export default function AppointmentsPage() {
       prev.map((a) => (a.id === appointment.id ? appointment : a))
     );
     setRescheduleTarget(null);
+    showToast(`Appointment rescheduled for ${appointment.leadName}`, 'success');
   }
 
   // Calendar view helpers

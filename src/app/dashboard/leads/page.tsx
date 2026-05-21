@@ -24,6 +24,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import LeadForm from '@/components/forms/LeadForm';
+import { useToast } from '@/contexts/ToastContext';
 
 import { mockLeads } from '@/lib/mock-data';
 import { LEAD_STATUSES, LEAD_SOURCES } from '@/lib/constants';
@@ -38,7 +39,7 @@ export default function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   // ── Filtered leads ────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -84,17 +85,12 @@ export default function LeadsPage() {
     newLead.activities[0].leadId = newLead.id;
     setLeads((prev) => [newLead, ...prev]);
     setModalOpen(false);
-    showToast('Lead added successfully! 🎉');
+    showToast('Lead added successfully! 🎉', 'success');
   }
 
   // ── Import CSV (mock) ────────────────────────────────────
   function handleImportCSV() {
-    showToast('CSV import started — 8 leads imported successfully! ✅');
-  }
-
-  function showToast(message: string) {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
+    showToast('CSV import started — 8 leads imported successfully! ✅', 'success');
   }
 
   // ── Source emoji helper ───────────────────────────────────
@@ -104,14 +100,6 @@ export default function LeadsPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Toast ─────────────────────────────────────── */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg animate-in slide-in-from-top-2">
-          <CheckCircle className="h-4 w-4" />
-          {toast}
-        </div>
-      )}
-
       {/* ── Header ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -247,12 +235,14 @@ export default function LeadsPage() {
                           <Eye className="h-4 w-4" />
                         </Link>
                         <button
+                          onClick={() => showToast(`Calling ${lead.name} (Simulated)...`, 'info')}
                           className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                           title="Call"
                         >
                           <Phone className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => showToast(`Opening chat with ${lead.name} (Simulated)...`, 'info')}
                           className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                           title="Message"
                         >

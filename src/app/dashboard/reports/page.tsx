@@ -21,6 +21,7 @@ import clsx from 'clsx';
 
 import Card, { StatCard } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { useToast } from '@/contexts/ToastContext';
 
 import { mockAIReport } from '@/lib/mock-data';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -41,6 +42,7 @@ type MissedOpportunity = {
 
 export default function ReportsPage() {
   const report = mockAIReport;
+  const { showToast } = useToast();
 
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [missedOps, setMissedOps] = useState<MissedOpportunity[]>([]);
@@ -65,8 +67,13 @@ export default function ReportsPage() {
   function toggleAction(idx: number) {
     setCheckedActions((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      const action = report.suggestedActions[idx];
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+        showToast(`Action completed: "${action}" (Simulated/Demo Mode)`, 'success');
+      }
       return next;
     });
   }

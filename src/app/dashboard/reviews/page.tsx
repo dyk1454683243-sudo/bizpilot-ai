@@ -11,6 +11,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
 import { StatCard } from '@/components/ui/Card';
+import { useToast } from '@/contexts/ToastContext';
 import {
   Star,
   MessageSquare,
@@ -41,6 +42,7 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
 }
 
 export default function ReviewsPage() {
+  const { showToast } = useToast();
   const [reviews, setReviews] = useState<Review[]>(mockReviews);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
@@ -79,6 +81,7 @@ export default function ReviewsPage() {
     try {
       const msg = await generateReviewRequest(lead.name, lead.serviceInterested || 'our service');
       setGeneratedMessage(msg);
+      showToast('AI crafted review request message successfully!', 'success');
     } finally {
       setIsGenerating(false);
     }
@@ -101,6 +104,7 @@ export default function ReviewsPage() {
 
     setReviews((prev) => [...prev, newReview]);
     setIsSent(true);
+    showToast(`Review request sent to ${lead.name} (Simulated)!`, 'success');
 
     setTimeout(() => {
       setIsRequestModalOpen(false);

@@ -13,6 +13,7 @@ import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import Tabs from '@/components/ui/Tabs';
 import Avatar from '@/components/ui/Avatar';
+import { useToast } from '@/contexts/ToastContext';
 import {
   Settings,
   Building2,
@@ -53,10 +54,15 @@ export default function SettingsPage() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <Settings className="h-6 w-6 text-indigo-600" />
-          Settings
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Settings className="h-6 w-6 text-indigo-600" />
+            Settings
+          </h1>
+          <span className="bg-amber-50 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider select-none shrink-0" title="Data is local and simulated for this MVP preview">
+            Demo Mode
+          </span>
+        </div>
         <p className="text-sm text-slate-500 mt-0.5">Manage your business configuration</p>
       </div>
 
@@ -84,6 +90,7 @@ export default function SettingsPage() {
    Business Profile Tab
    ============================================================ */
 function BusinessProfileTab() {
+  const { showToast } = useToast();
   const [name, setName] = useState(mockBusiness.name);
   const [type, setType] = useState(mockBusiness.type);
   const [whatsapp, setWhatsapp] = useState(mockBusiness.whatsappNumber);
@@ -104,6 +111,7 @@ function BusinessProfileTab() {
       localStorage.setItem('bizpilot_business', JSON.stringify(mockBusiness));
     }
     setSaved(true);
+    showToast('Business profile updated successfully! (Demo Mode)', 'success');
     setTimeout(() => setSaved(false), 2000);
   }
 
@@ -161,6 +169,7 @@ function BusinessProfileTab() {
    Services Tab
    ============================================================ */
 function ServicesTab() {
+  const { showToast } = useToast();
   const [services, setServices] = useState<Service[]>(mockBusiness.services);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editService, setEditService] = useState<Service | null>(null);
@@ -188,10 +197,13 @@ function ServicesTab() {
     setNewPrice('');
     setNewDuration('60');
     setIsAddOpen(false);
+    showToast(`Service "${newName}" added successfully! (Demo Mode)`, 'success');
   }
 
   function handleDelete(id: string) {
+    const svc = services.find((s) => s.id === id);
     setServices((prev) => prev.filter((s) => s.id !== id));
+    showToast(`Service "${svc?.name || ''}" removed. (Demo Mode)`, 'warning');
   }
 
   function handleUpdate() {
@@ -199,6 +211,7 @@ function ServicesTab() {
     setServices((prev) =>
       prev.map((s) => (s.id === editService.id ? editService : s))
     );
+    showToast(`Service "${editService.name}" updated successfully! (Demo Mode)`, 'success');
     setEditService(null);
   }
 
@@ -337,6 +350,7 @@ function ServicesTab() {
    Staff Tab
    ============================================================ */
 function StaffTab() {
+  const { showToast } = useToast();
   const [staff, setStaff] = useState<Staff[]>(mockStaff);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
@@ -344,9 +358,11 @@ function StaffTab() {
   const [newStaffPhone, setNewStaffPhone] = useState('');
 
   function toggleActive(id: string) {
+    const member = staff.find((m) => m.id === id);
     setStaff((prev) =>
       prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
     );
+    showToast(`Staff member "${member?.name || ''}" status changed. (Demo Mode)`, 'info');
   }
 
   function handleAdd() {
@@ -366,6 +382,7 @@ function StaffTab() {
     setNewStaffEmail('');
     setNewStaffPhone('');
     setIsAddOpen(false);
+    showToast(`Staff member "${newStaffName}" added successfully! (Demo Mode)`, 'success');
   }
 
   return (
@@ -476,6 +493,7 @@ function StaffTab() {
    Templates Tab
    ============================================================ */
 function TemplatesTab() {
+  const { showToast } = useToast();
   const [templates] = useState<MessageTemplate[]>(mockMessageTemplates);
 
   function getChannelBadge(channel: string) {
@@ -533,7 +551,12 @@ function TemplatesTab() {
                   {tpl.body}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" className="shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                onClick={() => showToast(`Template editing simulated (Demo Mode)`, 'info')}
+              >
                 <Pencil className="h-3.5 w-3.5 mr-1" />
                 Edit
               </Button>
@@ -549,6 +572,7 @@ function TemplatesTab() {
    Payments Tab
    ============================================================ */
 function PaymentsTab() {
+  const { showToast } = useToast();
   const [selectedMethod, setSelectedMethod] = useState(mockBusiness.paymentMethod);
   const [upiId, setUpiId] = useState(mockBusiness.upiId || 'deshraj@upi');
   const [saved, setSaved] = useState(false);
@@ -560,6 +584,7 @@ function PaymentsTab() {
       localStorage.setItem('bizpilot_business', JSON.stringify(mockBusiness));
     }
     setSaved(true);
+    showToast('UPI settings saved successfully! (Demo Mode)', 'success');
     setTimeout(() => setSaved(false), 2000);
   }
 
@@ -660,7 +685,12 @@ function PaymentsTab() {
             {selectedMethod === 'razorpay' ? 'Razorpay' : 'Stripe'} Integration
           </h3>
           <p className="text-sm text-indigo-600 mt-1">Coming soon! We&apos;re working on seamless payment integration.</p>
-          <Button variant="outline" className="mt-4" size="sm">
+          <Button
+            variant="outline"
+            className="mt-4"
+            size="sm"
+            onClick={() => showToast(`${selectedMethod === 'razorpay' ? 'Razorpay' : 'Stripe'} integration simulated (Demo Mode)`, 'info')}
+          >
             Connect {selectedMethod === 'razorpay' ? 'Razorpay' : 'Stripe'}
           </Button>
         </div>
@@ -673,6 +703,7 @@ function PaymentsTab() {
    Language Tab
    ============================================================ */
 function LanguageTab() {
+  const { showToast } = useToast();
   const [language, setLanguage] = useState<'english' | 'hinglish'>(mockBusiness.language);
 
   const englishPreview = `Hi Priya! 👋 Thank you for your interest in JEE Coaching. We'd love to tell you more about our program. When would be a good time to chat?`;
@@ -684,6 +715,7 @@ function LanguageTab() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bizpilot_business', JSON.stringify(mockBusiness));
     }
+    showToast(`Language preference set to ${lang.toUpperCase()}! (Demo Mode)`, 'success');
   };
 
   return (

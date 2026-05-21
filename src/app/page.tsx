@@ -229,19 +229,22 @@ export default function LandingPage() {
               </div>
 
               {/* Social Proof Stats */}
-              <div className="mt-12 grid grid-cols-3 gap-6 border-t border-slate-200 pt-8 w-full max-w-lg">
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">2,500+</p>
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Businesses</p>
+              <div className="mt-12 border-t border-slate-200 pt-8 w-full max-w-lg">
+                <div className="grid grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">2,500+</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Businesses*</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">50K+</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Leads Managed*</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">₹2Cr+</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Payments Tracked*</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">50K+</p>
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Leads Managed</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">₹2Cr+</p>
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Payments Tracked</p>
-                </div>
+                <p className="text-[10px] text-slate-400 mt-3 italic">*Metrics are simulated for MVP preview and demonstration purposes</p>
               </div>
             </div>
 
@@ -436,10 +439,11 @@ export default function LandingPage() {
       <section className="py-20 bg-white border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Testimonials</h2>
+            <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Simulated Case Studies</h2>
             <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">
               Loved by business owners like you
             </h3>
+            <p className="text-sm text-slate-500 mt-2">*Demo testimonies representing realistic business workflows</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -605,7 +609,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 text-center relative z-10 space-y-6">
           <h2 className="text-3xl sm:text-5xl font-extrabold leading-tight">Ready to pilot your business to success?</h2>
           <p className="text-indigo-100 text-lg max-w-xl mx-auto">
-            Join thousands of small business owners who save 10+ hours a week and boost their sales using BizPilot AI.
+            Designed for small business owners to save 10+ hours a week and scale sales using smart operations automation.
           </p>
           <div className="pt-4">
             <Button

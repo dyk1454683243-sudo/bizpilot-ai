@@ -11,6 +11,7 @@ import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
 import { StatCard } from '@/components/ui/Card';
 import InvoiceForm from '@/components/forms/InvoiceForm';
+import { useToast } from '@/contexts/ToastContext';
 import {
   Receipt,
   Plus,
@@ -54,6 +55,7 @@ function getStatusLabel(status: InvoiceStatus) {
 }
 
 export default function InvoicesPage() {
+  const { showToast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
   const [statusFilter, setStatusFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -98,15 +100,20 @@ export default function InvoicesPage() {
           : inv
       )
     );
+    const inv = invoices.find((i) => i.id === id);
+    showToast(`Invoice ${inv?.invoiceNumber || ''} marked as paid successfully!`, 'success');
   }
 
   function handleSendReminder(id: string) {
     setSentReminders((prev) => new Set(prev).add(id));
+    const inv = invoices.find((i) => i.id === id);
+    showToast(`SMS & WhatsApp payment reminder sent to ${inv?.leadName} (Simulated)`, 'success');
   }
 
   function handleNewInvoice(invoice: Invoice) {
     setInvoices((prev) => [invoice, ...prev]);
     setIsFormOpen(false);
+    showToast(`Invoice ${invoice.invoiceNumber} created and sent successfully!`, 'success');
   }
 
   const nextInvoiceNumber = invoices.length + 1;
@@ -249,20 +256,22 @@ export default function InvoicesPage() {
               {/* Payment automation badge */}
               {inv.status !== 'paid' && (
                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
-                  <div className="relative group/tooltip">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-50 rounded-full px-2.5 py-1 cursor-default">
-                      <CreditCard className="h-3 w-3" />
-                      Razorpay
-                      <span className="text-[10px] bg-indigo-100 text-indigo-600 rounded px-1">Coming Soon</span>
-                    </span>
-                  </div>
-                  <div className="relative group/tooltip">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-50 rounded-full px-2.5 py-1 cursor-default">
-                      <CreditCard className="h-3 w-3" />
-                      Stripe
-                      <span className="text-[10px] bg-indigo-100 text-indigo-600 rounded px-1">Coming Soon</span>
-                    </span>
-                  </div>
+                  <button
+                    onClick={() => showToast(`Razorpay checkout link generated for ${inv.leadName} (Simulated)`, 'info')}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-full px-2.5 py-1 cursor-pointer transition-all"
+                  >
+                    <CreditCard className="h-3 w-3" />
+                    Razorpay
+                    <span className="text-[10px] bg-indigo-100 text-indigo-600 rounded px-1">Demo Mode</span>
+                  </button>
+                  <button
+                    onClick={() => showToast(`Stripe payment intent created for ${inv.leadName} (Simulated)`, 'info')}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-full px-2.5 py-1 cursor-pointer transition-all"
+                  >
+                    <CreditCard className="h-3 w-3" />
+                    Stripe
+                    <span className="text-[10px] bg-indigo-100 text-indigo-600 rounded px-1">Demo Mode</span>
+                  </button>
                 </div>
               )}
             </div>

@@ -28,6 +28,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
+import { useToast } from '@/contexts/ToastContext';
 
 import { mockLeads } from '@/lib/mock-data';
 import {
@@ -61,6 +62,7 @@ export default function LeadDetailPage() {
   const params = useParams();
   const leadId = params?.id as string;
   const lead = mockLeads.find((l) => l.id === leadId);
+  const { showToast } = useToast();
 
   const [scoreData, setScoreData] = useState<{ score: number; factors: string[]; recommendation: string } | null>(null);
   const [nextAction, setNextAction] = useState<string | null>(null);
@@ -110,6 +112,7 @@ export default function LeadDetailPage() {
     if (!newNote.trim()) return;
     setLocalNotes((prev) => [newNote.trim(), ...prev]);
     setNewNote('');
+    showToast('Note added successfully! (Demo Mode)', 'success');
   }
 
   const sortedActivities = [...lead.activities].sort(
@@ -162,7 +165,7 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => showToast('Edit lead details feature (Simulated/Demo Mode)', 'info')}>
                 <Edit className="h-4 w-4 mr-1.5" /> Edit
               </Button>
             </div>
@@ -292,7 +295,7 @@ export default function LeadDetailPage() {
             ) : (
               <>
                 <p className="text-sm text-slate-700 leading-relaxed mb-4">{nextAction}</p>
-                <Button variant="primary" size="sm" className="w-full">
+                <Button variant="primary" size="sm" className="w-full" onClick={() => showToast(`Executing action: ${nextAction} (Simulated)`, 'info')}>
                   Take Action
                 </Button>
               </>
@@ -303,16 +306,16 @@ export default function LeadDetailPage() {
           <Card className="p-5">
             <h3 className="font-semibold text-slate-900 text-sm mb-3">Quick Actions</h3>
             <div className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => showToast(`Calling ${lead.name} (Simulated)...`, 'info')}>
                 <Phone className="h-4 w-4 mr-2 text-emerald-500" /> Call
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => showToast(`Opening WhatsApp chat with ${lead.name} (Simulated)...`, 'info')}>
                 <MessageSquare className="h-4 w-4 mr-2 text-green-500" /> WhatsApp
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => showToast(`Opening email draft to ${lead.name} (Simulated)...`, 'info')}>
                 <Mail className="h-4 w-4 mr-2 text-blue-500" /> Email
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => showToast(`Appointment scheduler for ${lead.name} opened (Simulated)...`, 'info')}>
                 <Calendar className="h-4 w-4 mr-2 text-indigo-500" /> Book Appointment
               </Button>
             </div>

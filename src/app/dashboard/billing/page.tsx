@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { PRICING_PLANS } from '@/lib/constants';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useToast } from '@/contexts/ToastContext';
 import { mockBusiness } from '@/lib/mock-data';
 import {
   CreditCard,
@@ -30,6 +31,7 @@ interface BillingHistoryItem {
 
 export default function BillingPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   
   // State to simulate switching or upgrading plans
   const [currentPlanName, setCurrentPlanName] = useState('Pro');
@@ -43,6 +45,7 @@ export default function BillingPage() {
 
   const handlePlanChange = (planName: string) => {
     setCurrentPlanName(planName);
+    showToast(`Switched plan to ${planName} successfully!`, 'success');
   };
 
   const getStatusBadge = (status: 'paid' | 'pending' | 'failed') => {
@@ -111,10 +114,10 @@ export default function BillingPage() {
               <span>UPI ID: {mockBusiness.upiId || 'deshraj@upi'}</span>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => showToast('Subscription cancellation request simulated (Demo Mode)', 'warning')}>
                 Cancel Plan
               </Button>
-              <Button variant="primary" size="sm">
+              <Button variant="primary" size="sm" onClick={() => showToast('Payment settings dashboard simulated (Demo Mode)', 'info')}>
                 Change Payment Method
               </Button>
             </div>
@@ -225,6 +228,7 @@ export default function BillingPage() {
                 <div className="flex items-center justify-between sm:justify-end gap-3">
                   {getStatusBadge(invoice.status)}
                   <button
+                    onClick={() => showToast(`Invoice ${invoice.id} PDF downloaded successfully!`, 'success')}
                     title="Download Invoice"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50 transition-colors"
                   >
