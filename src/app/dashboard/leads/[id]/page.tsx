@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -20,6 +20,7 @@ import {
   Zap,
   Send,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -29,8 +30,10 @@ import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/contexts/ToastContext';
+import Modal from '@/components/ui/Modal';
+import LeadForm from '@/components/forms/LeadForm';
 
-import { mockLeads } from '@/lib/mock-data';
+import { fetchLeadById, updateLead, deleteLead } from '@/lib/leads-db';
 import {
   formatDate,
   timeAgo,
@@ -60,39 +63,74 @@ function getActivityIcon(type: LeadActivity['type']) {
 
 export default function LeadDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const leadId = params?.id as string;
-  const lead = mockLeads.find((l) => l.id === leadId);
   const { showToast } = useToast();
+
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [scoreData, setScoreData] = useState<{ score: number; factors: string[]; recommendation: string } | null>(null);
   const [nextAction, setNextAction] = useState<string | null>(null);
   const [newNote, setNewNote] = useState('');
-  const [localNotes, setLocalNotes] = useState<string[]>([]);
   const [loadingScore, setLoadingScore] = useState(true);
   const [loadingAction, setLoadingAction] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!lead) return;
+  useEffect(() => {
+    async function loadLead() {
+      if (!leadId) return;
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchLeadById(leadId);
+        if (data) {
+          setLead(data);
+        } else {
+          setError('Lead not found.');
+        }
+      } catch (err: any) {
+        console.error('Failed to load lead:', err);
+        setError(err.message || 'Failed to load lead details.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadLead();
+  }, [leadId]);
+
+  const loadAIData = useCallback(async (currentLead: Lead) => {
     setLoadingScore(true);
     setLoadingAction(true);
-    const [s, a] = await Promise.all([scoreLead(lead), suggestNextAction(lead)]);
+    const [s, a] = await Promise.all([scoreLead(currentLead), suggestNextAction(currentLead)]);
     setScoreData(s);
     setNextAction(a);
     setLoadingScore(false);
     setLoadingAction(false);
-  }, [lead]);
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (lead && !scoreData && !nextAction) {
+      loadAIData(lead);
+    }
+  }, [lead, scoreData, nextAction, loadAIData]);
 
-  if (!lead) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !lead) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <EmptyState
           icon={<AlertCircle className="h-12 w-12 text-slate-300" />}
-          title="Lead not found"
-          description="This lead doesn't exist or has been removed."
+          title={error ? "Error loading lead" : "Lead not found"}
+          description={error || "This lead doesn't exist or has been removed."}
           action={
             <Link href="/dashboard/leads">
               <Button variant="primary" size="sm">
@@ -108,11 +146,73 @@ export default function LeadDetailPage() {
   const displayScore = scoreData?.score ?? lead.score;
   const scorePercent = (displayScore / 100) * 360;
 
-  function handleAddNote() {
-    if (!newNote.trim()) return;
-    setLocalNotes((prev) => [newNote.trim(), ...prev]);
-    setNewNote('');
-    showToast('Note added successfully! (Demo Mode)', 'success');
+  async function handleAddNote() {
+    if (!lead || !newNote.trim()) return;
+    try {
+      const newActivity: LeadActivity = {
+        id: `act-${crypto.randomUUID()}`,
+        leadId: lead.id,
+        type: 'note_added',
+        description: `Note added: ${newNote.trim()}`,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedActivities = [newActivity, ...lead.activities];
+      const updatedLead = await updateLead(lead.id, {
+        activities: updatedActivities,
+        notes: lead.notes ? `${newNote.trim()}\n\n${lead.notes}` : newNote.trim(),
+      });
+
+      setLead(updatedLead);
+      setNewNote('');
+      showToast('Note added successfully! 📝', 'success');
+    } catch (err: any) {
+      console.error('Error adding note:', err);
+      showToast(err.message || 'Failed to add note.', 'error');
+    }
+  }
+
+  async function handleEditLead(data: Partial<Lead>) {
+    if (!lead) return;
+    try {
+      const activities = [...lead.activities];
+      if (data.status && data.status !== lead.status) {
+        activities.unshift({
+          id: `act-${crypto.randomUUID()}`,
+          leadId: lead.id,
+          type: 'status_changed',
+          description: `Status changed to ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      const updatedLead = await updateLead(lead.id, {
+        ...data,
+        activities,
+      });
+
+      setLead(updatedLead);
+      setEditModalOpen(false);
+      showToast('Lead details updated successfully! 🎉', 'success');
+    } catch (err: any) {
+      console.error('Error updating lead details:', err);
+      showToast(err.message || 'Failed to update lead details.', 'error');
+    }
+  }
+
+  async function handleDeleteLead() {
+    if (!lead) return;
+    if (!window.confirm(`Are you sure you want to delete lead "${lead.name}"?`)) return;
+    try {
+      setIsLoading(true);
+      await deleteLead(lead.id);
+      showToast('Lead deleted successfully! 🗑️', 'success');
+      router.push('/dashboard/leads');
+    } catch (err: any) {
+      console.error('Error deleting lead:', err);
+      showToast(err.message || 'Failed to delete lead.', 'error');
+      setIsLoading(false);
+    }
   }
 
   const sortedActivities = [...lead.activities].sort(
@@ -165,9 +265,14 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => showToast('Edit lead details feature (Simulated/Demo Mode)', 'info')}>
-                <Edit className="h-4 w-4 mr-1.5" /> Edit
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)}>
+                  <Edit className="h-4 w-4 mr-1.5" /> Edit
+                </Button>
+                <Button variant="danger" size="sm" onClick={handleDeleteLead}>
+                  <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -256,13 +361,7 @@ export default function LeadDetailPage() {
                 <p className="text-sm text-slate-600 whitespace-pre-wrap">{lead.notes}</p>
               </div>
             )}
-            {/* Local notes */}
-            {localNotes.map((note, idx) => (
-              <div key={idx} className="p-4 rounded-lg bg-blue-50 border border-blue-100 mb-3">
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{note}</p>
-                <p className="text-xs text-slate-400 mt-1">Just now</p>
-              </div>
-            ))}
+            {/* Notes are synced dynamically to Supabase */}
             {/* Add note */}
             <div className="flex gap-2">
               <textarea
@@ -367,6 +466,17 @@ export default function LeadDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* ── Edit Lead Modal ────────────────────────────── */}
+      <Modal isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Lead Details">
+        {lead && (
+          <LeadForm
+            initialData={lead}
+            onSubmit={handleEditLead}
+            onClose={() => setEditModalOpen(false)}
+          />
+        )}
+      </Modal>
     </div>
   );
 }

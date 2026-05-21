@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Plus,
@@ -11,6 +11,7 @@ import {
   MessageSquare,
   CheckCircle,
   Users,
+  Trash2,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -26,20 +27,38 @@ import EmptyState from '@/components/ui/EmptyState';
 import LeadForm from '@/components/forms/LeadForm';
 import { useToast } from '@/contexts/ToastContext';
 
-import { mockLeads } from '@/lib/mock-data';
+import { fetchLeads, createLead, deleteLead } from '@/lib/leads-db';
 import { LEAD_STATUSES, LEAD_SOURCES } from '@/lib/constants';
 import { timeAgo, getLeadStatusColor, getScoreColor, generateId } from '@/lib/utils';
 import { type Lead, type LeadStatus, type LeadSource } from '@/lib/types';
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>(() =>
-    [...mockLeads].sort((a, b) => b.score - a.score)
-  );
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState<LeadSource | 'all'>('all');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    async function loadLeads() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchLeads();
+        setLeads(data);
+      } catch (err: any) {
+        console.error('Failed to load leads from Supabase:', err);
+        setError(err.message || 'Failed to load leads from database.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadLeads();
+  }, []);
 
   // ── Filtered leads ────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -59,39 +78,57 @@ export default function LeadsPage() {
   }, [leads, statusFilter, sourceFilter, search]);
 
   // ── Add Lead handler ──────────────────────────────────────
-  function handleAddLead(data: Partial<Lead>) {
-    const newLead: Lead = {
-      id: `lead-${generateId()}`,
-      name: data.name ?? '',
-      phone: data.phone ?? '',
-      email: data.email,
-      status: data.status ?? 'new',
-      source: data.source ?? 'manual',
-      score: Math.floor(Math.random() * 40) + 40,
-      notes: data.notes ?? '',
-      serviceInterested: data.serviceInterested,
-      activities: [
-        {
-          id: `act-${generateId()}`,
-          leadId: '',
-          type: 'created',
-          description: 'Lead created manually',
-          createdAt: new Date().toISOString(),
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    newLead.activities[0].leadId = newLead.id;
-    setLeads((prev) => [newLead, ...prev]);
-    setModalOpen(false);
-    showToast('Lead added successfully! 🎉', 'success');
+  async function handleAddLead(data: Partial<Lead>) {
+    try {
+      const tempId = generateId();
+      const newLeadData = {
+        name: data.name ?? '',
+        phone: data.phone ?? '',
+        email: data.email,
+        status: data.status ?? 'new',
+        source: data.source ?? 'manual',
+        score: Math.floor(Math.random() * 40) + 40,
+        notes: data.notes ?? '',
+        serviceInterested: data.serviceInterested,
+        activities: [
+          {
+            id: `act-${tempId}`,
+            leadId: '',
+            type: 'created' as const,
+            description: 'Lead created manually',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+
+      const created = await createLead(newLeadData);
+      setLeads((prev) => [created, ...prev]);
+      setModalOpen(false);
+      showToast('Lead added successfully! 🎉', 'success');
+    } catch (err: any) {
+      console.error('Error adding lead:', err);
+      showToast(err.message || 'Failed to add lead. Please try again.', 'error');
+    }
+  }
+
+  // ── Delete Lead handler ───────────────────────────────────
+  async function handleDeleteLead(id: string, name: string) {
+    if (!window.confirm(`Are you sure you want to delete lead "${name}"?`)) return;
+    try {
+      await deleteLead(id);
+      setLeads((prev) => prev.filter((l) => l.id !== id));
+      showToast('Lead deleted successfully! 🗑️', 'success');
+    } catch (err: any) {
+      console.error('Error deleting lead:', err);
+      showToast(err.message || 'Failed to delete lead.', 'error');
+    }
   }
 
   // ── Import CSV (mock) ────────────────────────────────────
   function handleImportCSV() {
     showToast('CSV import started — 8 leads imported successfully! ✅', 'success');
   }
+
 
   // ── Source emoji helper ───────────────────────────────────
   function sourceEmoji(source: LeadSource) {
@@ -153,13 +190,31 @@ export default function LeadsPage() {
       </Card>
 
       {/* ── Lead Count ────────────────────────────────── */}
-      <p className="text-sm text-slate-500">
-        Showing <span className="font-medium text-slate-700">{filtered.length}</span> of{' '}
-        <span className="font-medium text-slate-700">{leads.length}</span> leads
-      </p>
+      {!isLoading && !error && (
+        <p className="text-sm text-slate-500">
+          Showing <span className="font-medium text-slate-700">{filtered.length}</span> of{' '}
+          <span className="font-medium text-slate-700">{leads.length}</span> leads
+        </p>
+      )}
 
-      {/* ── Leads Table ───────────────────────────────── */}
-      {filtered.length === 0 ? (
+      {/* ── Leads Table / States ───────────────────────── */}
+      {isLoading ? (
+        <Card className="p-10 flex flex-col items-center justify-center min-h-[300px]">
+          <div className="h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin" />
+          <p className="text-sm text-slate-500 mt-4">Loading leads from Supabase...</p>
+        </Card>
+      ) : error ? (
+        <Card className="p-10 border-rose-100 bg-rose-50/20">
+          <div className="flex flex-col items-center justify-center text-center">
+            <span className="text-3xl mb-3">⚠️</span>
+            <h3 className="text-base font-semibold text-slate-900">Database Connection Error</h3>
+            <p className="text-sm text-slate-500 max-w-md mt-1 mb-4">{error}</p>
+            <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
+              Retry Connection
+            </Button>
+          </div>
+        </Card>
+      ) : filtered.length === 0 ? (
         <Card className="p-10">
           <EmptyState
             icon={<Users className="h-12 w-12 text-slate-300" />}
@@ -247,6 +302,13 @@ export default function LeadsPage() {
                           title="Message"
                         >
                           <MessageSquare className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLead(lead.id, lead.name)}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </TableCell>

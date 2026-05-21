@@ -16,15 +16,18 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+import Button from '@/components/ui/Button';
 import Card, { StatCard } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/contexts/ToastContext';
 
-import { mockDashboardStats, mockAIReport, mockLeads, mockAppointments } from '@/lib/mock-data';
+import { mockDashboardStats, mockAIReport, mockAppointments } from '@/lib/mock-data';
 import { formatCurrency, timeAgo, formatTime, getLeadStatusColor, getScoreColor, getGreeting } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchLeads } from '@/lib/leads-db';
+import type { Lead } from '@/lib/types';
 
 // ── Revenue Chart Data (hardcoded for CSS chart) ──────────────────
 const revenueData = [
@@ -51,12 +54,46 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
   const { showToast } = useToast();
-  
-  useEffect(() => setMounted(true), []);
+
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+
+    async function loadDashboardLeads() {
+      try {
+        setIsLoading(true);
+        const data = await fetchLeads();
+        setLeads(data);
+      } catch (err: any) {
+        console.error('Error fetching leads for dashboard:', err);
+        setError(err.message || 'Failed to load leads.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadDashboardLeads();
+  }, []);
 
   const stats = mockDashboardStats;
   const report = mockAIReport;
-  const recentLeads = [...mockLeads].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+
+  // Real database dynamic stats calculations
+  const totalLeadsCount = isLoading ? '...' : String(leads.length);
+  const hotLeadsCount = isLoading ? '...' : String(leads.filter((l) => l.status === 'hot').length);
+  const pendingFollowUpsCount = isLoading
+    ? '...'
+    : String(leads.filter((l) => l.status === 'new' || l.status === 'contacted').length);
+
+  // Sort and select the 5 most recent leads from the database
+  const recentLeads = isLoading
+    ? []
+    : [...leads]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
 
   // Filter appointments for "today" — we use the first few appointments from mock data
   const todaysAppointments = mockAppointments.filter((a) => a.date === '2026-05-21');
@@ -77,21 +114,21 @@ export default function DashboardPage() {
         <StatCard
           icon={<Users className="h-5 w-5 text-indigo-600" />}
           label="Total Leads"
-          value={String(stats.totalLeads)}
-          trend="+3 today"
-          trendUp
+          value={totalLeadsCount}
+          trend={isLoading ? undefined : `Total active`}
+          trendUp={!isLoading}
         />
         <StatCard
           icon={<Flame className="h-5 w-5 text-orange-500" />}
           label="Hot Leads"
-          value={String(stats.hotLeads)}
+          value={hotLeadsCount}
           trend="🔥"
-          trendUp
+          trendUp={!isLoading}
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-amber-500" />}
           label="Pending Follow-ups"
-          value={String(stats.pendingFollowUps)}
+          value={pendingFollowUpsCount}
           trend="Action needed"
         />
         <StatCard
@@ -164,29 +201,66 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-50">
-            {recentLeads.map((lead) => (
-              <Link
-                key={lead.id}
-                href={`/dashboard/leads/${lead.id}`}
-                className="flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50/80 transition-colors group"
-              >
-                <Avatar name={lead.name} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
-                    {lead.name}
-                  </p>
-                  <p className="text-xs text-slate-400 truncate">{lead.serviceInterested || 'No service'}</p>
+          <div className={clsx(
+            "divide-y divide-slate-50",
+            (isLoading || error || recentLeads.length === 0) && "min-h-[200px] flex flex-col justify-center"
+          )}>
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-6 py-3.5 animate-pulse">
+                  <div className="h-8 w-8 rounded-full bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-1/3" />
+                    <div className="h-3 bg-slate-200 rounded w-1/2" />
+                  </div>
+                  <div className="h-5 bg-slate-200 rounded w-12" />
+                  <div className="h-4 bg-slate-200 rounded w-8" />
                 </div>
-                <Badge className={clsx('text-xs', getLeadStatusColor(lead.status))}>
-                  {lead.status}
-                </Badge>
-                <span className={clsx('text-sm font-semibold tabular-nums', getScoreColor(lead.score))}>
-                  {lead.score}
-                </span>
-                <span className="text-xs text-slate-400 hidden sm:block">{timeAgo(lead.updatedAt)}</span>
-              </Link>
-            ))}
+              ))
+            ) : error ? (
+              <div className="p-6 text-center">
+                <p className="text-xs text-rose-500 font-semibold mb-1">Failed to load recent leads</p>
+                <p className="text-xs text-slate-400">{error}</p>
+              </div>
+            ) : recentLeads.length === 0 ? (
+              <div className="p-6">
+                <EmptyState
+                  icon={<Users className="h-8 w-8 text-slate-300" />}
+                  title="No leads yet"
+                  description="Your CRM is empty. Add your first lead!"
+                  action={
+                    <Link href="/dashboard/leads">
+                      <Button variant="primary" size="sm">
+                        Go to Leads CRM
+                      </Button>
+                    </Link>
+                  }
+                />
+              </div>
+            ) : (
+              recentLeads.map((lead) => (
+                <Link
+                  key={lead.id}
+                  href={`/dashboard/leads/${lead.id}`}
+                  className="flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50/80 transition-colors group"
+                >
+                  <Avatar name={lead.name} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                      {lead.name}
+                    </p>
+                    <p className="text-xs text-slate-400 truncate">{lead.serviceInterested || 'No service'}</p>
+                  </div>
+                  <Badge className={clsx('text-xs', getLeadStatusColor(lead.status))}>
+                    {lead.status}
+                  </Badge>
+                  <span className={clsx('text-sm font-semibold tabular-nums', getScoreColor(lead.score))}>
+                    {lead.score}
+                  </span>
+                  <span className="text-xs text-slate-400 hidden sm:block">{timeAgo(lead.updatedAt)}</span>
+                </Link>
+              ))
+            )}
           </div>
         </Card>
 
