@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import { type Invoice, type InvoiceStatus } from './types';
-import { mockInvoices } from './mock-data';
 
 // Helper to map DB row to Invoice interface
 export function mapDbInvoice(row: any): Invoice {
@@ -56,17 +55,43 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     throw error;
   }
 
-  // If no invoices are found, automatically seed the database with mock invoices
   if (!data || data.length === 0) {
-    try {
-      return await seedInitialInvoices(session.user.id);
-    } catch (seedError) {
-      console.error('Failed to seed default invoices:', seedError);
-      return [];
-    }
+    return [];
   }
 
   return data.map(mapDbInvoice);
+}
+
+// Get the next invoice number by finding the highest existing suffix
+export async function getNextInvoiceNumber(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) {
+    return 'INV-2026-001';
+  }
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('invoice_number')
+    .eq('user_id', session.user.id)
+    .order('created_at', { ascending: false });
+
+  if (error || !data || data.length === 0) {
+    return 'INV-2026-001';
+  }
+
+  // Parse the highest suffix from existing invoice numbers (e.g., INV-2026-005 -> 5)
+  let maxNum = 0;
+  for (const row of data) {
+    const match = row.invoice_number?.match(/INV-\d{4}-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
+
+  const year = new Date().getFullYear();
+  const nextNum = maxNum + 1;
+  return `INV-${year}-${String(nextNum).padStart(3, '0')}`;
 }
 
 // Create a new invoice for the current logged-in user
@@ -128,55 +153,4 @@ export async function deleteInvoice(id: string): Promise<void> {
     console.error(`Error deleting invoice ${id}:`, error);
     throw error;
   }
-}
-
-// Seed mock invoices into Supabase for the current user
-async function seedInitialInvoices(userId: string): Promise<Invoice[]> {
-  // First, fetch the user's leads from the database to link them correctly if names match
-  const { data: dbLeads } = await supabase
-    .from('leads')
-    .select('id, name')
-    .eq('user_id', userId);
-
-  const leadsMap = new Map<string, string>();
-  if (dbLeads) {
-    dbLeads.forEach((lead: any) => {
-      leadsMap.set(lead.name.toLowerCase().trim(), lead.id);
-    });
-  }
-
-  const seeds = mockInvoices.map((mockInv) => {
-    // Attempt to link to a database lead by matching name
-    const cleanName = mockInv.leadName.toLowerCase().trim();
-    const matchedLeadId = leadsMap.get(cleanName) || null;
-
-    return {
-      id: crypto.randomUUID(),
-      user_id: userId,
-      lead_id: matchedLeadId,
-      invoice_number: mockInv.invoiceNumber,
-      lead_name: mockInv.leadName,
-      lead_phone: mockInv.leadPhone,
-      service: mockInv.service,
-      amount: mockInv.amount,
-      status: mockInv.status,
-      due_date: mockInv.dueDate,
-      paid_at: mockInv.paidAt || null,
-      payment_method: mockInv.paymentMethod || null,
-      notes: mockInv.notes || null,
-      created_at: mockInv.createdAt,
-    };
-  });
-
-  const { data, error } = await supabase
-    .from('invoices')
-    .insert(seeds)
-    .select();
-
-  if (error) {
-    console.error('Error inserting seed invoices:', error);
-    throw error;
-  }
-
-  return data.map(mapDbInvoice);
 }

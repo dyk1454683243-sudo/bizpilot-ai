@@ -12,12 +12,12 @@ import { Receipt, FileText } from 'lucide-react';
 interface InvoiceFormProps {
   onSubmit: (invoice: Invoice) => void;
   onClose: () => void;
-  nextNumber?: number;
+  nextInvoiceNumber?: string;
   invoiceToEdit?: Invoice;
 }
 
-export default function InvoiceForm({ onSubmit, onClose, nextNumber = 1, invoiceToEdit }: InvoiceFormProps) {
-  const invoiceNumber = invoiceToEdit ? invoiceToEdit.invoiceNumber : `INV-2026-${String(nextNumber).padStart(3, '0')}`;
+export default function InvoiceForm({ onSubmit, onClose, nextInvoiceNumber = 'INV-2026-001', invoiceToEdit }: InvoiceFormProps) {
+  const invoiceNumber = invoiceToEdit ? invoiceToEdit.invoiceNumber : nextInvoiceNumber;
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [leadId, setLeadId] = useState(invoiceToEdit?.leadId || '');

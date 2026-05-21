@@ -16,6 +16,7 @@ import {
   createInvoice as createInvoiceDb,
   updateInvoice as updateInvoiceDb,
   deleteInvoice as deleteInvoiceDb,
+  getNextInvoiceNumber,
 } from '@/lib/invoices-db';
 import {
   Receipt,
@@ -73,13 +74,19 @@ export default function InvoicesPage() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [sentReminders, setSentReminders] = useState<Set<string>>(new Set());
 
-  // Fetch invoices on mount
+  const [nextInvoiceNum, setNextInvoiceNum] = useState<string>('INV-2026-001');
+
+  // Fetch invoices and next invoice number on mount
   useEffect(() => {
     async function loadInvoices() {
       try {
         setIsLoading(true);
-        const data = await fetchInvoices();
+        const [data, nextNum] = await Promise.all([
+          fetchInvoices(),
+          getNextInvoiceNumber(),
+        ]);
         setInvoices(data);
+        setNextInvoiceNum(nextNum);
       } catch (err: any) {
         console.error('Failed to fetch invoices:', err);
         setError(err.message || 'Failed to load invoices.');
@@ -154,6 +161,13 @@ export default function InvoicesPage() {
       setInvoices((prev) => [created, ...prev]);
       setIsFormOpen(false);
       showToast(`Invoice ${created.invoiceNumber} created and sent successfully!`, 'success');
+      // Re-fetch the next invoice number after creation
+      try {
+        const nextNum = await getNextInvoiceNumber();
+        setNextInvoiceNum(nextNum);
+      } catch {
+        // Fallback: increment from current invoice number
+      }
     } catch (err: any) {
       console.error('Error creating invoice:', err);
       showToast('Failed to create invoice.', 'error');
@@ -201,7 +215,7 @@ export default function InvoicesPage() {
     }
   }
 
-  const nextInvoiceNumber = invoices.length + 1;
+
 
   if (error) {
     return (
@@ -408,7 +422,7 @@ export default function InvoicesPage() {
         <InvoiceForm
           onSubmit={handleNewInvoice}
           onClose={() => setIsFormOpen(false)}
-          nextNumber={nextInvoiceNumber}
+          nextInvoiceNumber={nextInvoiceNum}
         />
       </Modal>
 
