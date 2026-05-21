@@ -39,8 +39,8 @@ export default function LoginPage() {
     try {
       await auth.login(email, password);
       router.push('/dashboard');
-    } catch {
-      setError('Login failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -50,9 +50,8 @@ export default function LoginPage() {
     setGoogleLoading(true);
     try {
       await auth.loginWithGoogle();
-      router.push('/dashboard');
-    } catch {
-      setError('Google login failed.');
+    } catch (err: any) {
+      setError(err.message || 'Google login failed.');
     } finally {
       setGoogleLoading(false);
     }

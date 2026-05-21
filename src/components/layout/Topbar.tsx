@@ -84,10 +84,14 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    showToast('Logged out successfully', 'info');
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      showToast('Logged out successfully', 'info');
+      router.push('/login');
+    } catch (err: any) {
+      showToast(err.message || 'Logout failed', 'error');
+    }
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

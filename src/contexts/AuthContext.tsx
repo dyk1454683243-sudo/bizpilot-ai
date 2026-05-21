@@ -1,13 +1,13 @@
 'use client';
 
 // ============================================================
-// BizPilot AI — Mock Auth Context
-// Simulates authentication with localStorage persistence
+// BizPilot AI — Supabase Auth Context
+// Integrates authentication with Supabase Auth session tracking
 // ============================================================
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { type User } from '@/lib/types';
-import { mockUser } from '@/lib/mock-data';
+import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -16,114 +16,148 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  updateUser: (name: string, email: string) => void;
+  logout: () => Promise<void>;
+  updateUser: (name: string, email: string) => Promise<void>;
   hasCompletedOnboarding: boolean;
   completeOnboarding: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to map Supabase auth user to application User interface
+const mapSupabaseUser = (sbUser: any): User => {
+  return {
+    id: sbUser.id,
+    name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'User',
+    email: sbUser.email || '',
+    role: 'owner', // Default role for the primary dashboard creator
+    businessId: 'biz-001', // Scoped mock business ID for simulation fallback
+    createdAt: sbUser.created_at || new Date().toISOString(),
+  };
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  // Check for existing session on mount
+  // Synchronize state and listen to session changes on mount
   useEffect(() => {
-    const stored = localStorage.getItem('bizpilot_user');
-    const loggedOut = localStorage.getItem('bizpilot_logged_out') === 'true';
-    const onboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
-    
-    if (stored) {
-      setUser(JSON.parse(stored));
-    } else if (!loggedOut) {
-      // If no saved user exists and not explicitly logged out, use fallback
-      const fallbackUser: User = {
-        id: 'user-001',
-        name: 'Deshraj Verma',
-        email: 'deshraj@bizpilot.ai',
-        role: 'owner',
-        businessId: 'biz-001',
-        createdAt: '2026-01-15T10:00:00Z',
-      };
-      setUser(fallbackUser);
-      localStorage.setItem('bizpilot_user', JSON.stringify(fallbackUser));
-    }
-    
-    if (onboarded) {
-      setHasCompletedOnboarding(true);
-    }
-    setIsLoading(false);
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(mapSupabaseUser(session.user));
+          // Read onboarding preference from metadata or localStorage
+          const metadataOnboarded = session.user.user_metadata?.onboarding_completed === true;
+          const localOnboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
+          if (metadataOnboarded || localOnboarded) {
+            setHasCompletedOnboarding(true);
+            if (!localOnboarded) {
+              localStorage.setItem('onboardingCompleted', 'true');
+              localStorage.setItem('bizpilot_onboarded', 'true');
+            }
+          }
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Error fetching initial Supabase session:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          setUser(mapSupabaseUser(session.user));
+          const metadataOnboarded = session.user.user_metadata?.onboarding_completed === true;
+          const localOnboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
+          if (metadataOnboarded || localOnboarded) {
+            setHasCompletedOnboarding(true);
+          } else {
+            setHasCompletedOnboarding(false);
+          }
+        } else {
+          setUser(null);
+          setHasCompletedOnboarding(false);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = useCallback(async (email: string, _password: string) => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    // Check if user is in localStorage or use mockUser fallback
-    const stored = localStorage.getItem('bizpilot_user');
-    const baseUser = stored ? JSON.parse(stored) : mockUser;
-    
-    const loggedInUser: User = {
-      ...baseUser,
-      email,
-      // If logging in, ensure name is fallback or set
-      name: baseUser.name || 'Deshraj Verma',
-    };
-    setUser(loggedInUser);
-    localStorage.setItem('bizpilot_user', JSON.stringify(loggedInUser));
-    localStorage.removeItem('bizpilot_logged_out');
-    const onboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
-    setHasCompletedOnboarding(onboarded);
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const stored = localStorage.getItem('bizpilot_user');
-    const baseUser = stored ? JSON.parse(stored) : mockUser;
-    
-    setUser(baseUser);
-    localStorage.setItem('bizpilot_user', JSON.stringify(baseUser));
-    localStorage.removeItem('bizpilot_logged_out');
-    const onboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
-    setHasCompletedOnboarding(onboarded);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined,
+      },
+    });
+    if (error) throw error;
   }, []);
 
-  const signup = useCallback(async (name: string, email: string, _password: string) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const newUser: User = {
-      ...mockUser,
-      name,
+  const signup = useCallback(async (name: string, email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
       email,
-    };
-    setUser(newUser);
-    localStorage.setItem('bizpilot_user', JSON.stringify(newUser));
-    localStorage.removeItem('bizpilot_logged_out');
-    setHasCompletedOnboarding(false);
+      password,
+      options: {
+        data: {
+          name,
+          onboarding_completed: false,
+        },
+      },
+    });
+    if (error) throw error;
+  }, []);
+
+  const logout = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    
+    // Clear onboarding status locally
     localStorage.removeItem('onboardingCompleted');
     localStorage.removeItem('bizpilot_onboarded');
-  }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
     setHasCompletedOnboarding(false);
-    localStorage.removeItem('bizpilot_user');
-    localStorage.setItem('bizpilot_logged_out', 'true');
+    setUser(null);
   }, []);
 
-  const updateUser = useCallback((name: string, email: string) => {
-    setUser((prev) => {
-      if (!prev) return null;
-      const updated = { ...prev, name, email };
-      localStorage.setItem('bizpilot_user', JSON.stringify(updated));
-      return updated;
+  const updateUser = useCallback(async (name: string, email: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      email,
+      data: { name },
     });
+    if (error) throw error;
+    if (data.user) {
+      setUser(mapSupabaseUser(data.user));
+    }
   }, []);
 
-  const completeOnboarding = useCallback(() => {
+  const completeOnboarding = useCallback(async () => {
     setHasCompletedOnboarding(true);
     localStorage.setItem('bizpilot_onboarded', 'true');
     localStorage.setItem('onboardingCompleted', 'true');
+
+    // Update Supabase user metadata
+    try {
+      await supabase.auth.updateUser({
+        data: { onboarding_completed: true },
+      });
+    } catch (err) {
+      console.error('Failed to sync onboarding completed to Supabase:', err);
+    }
   }, []);
 
   return (

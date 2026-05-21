@@ -51,8 +51,8 @@ export default function SignupPage() {
     try {
       await auth.signup(name, email, password);
       router.push('/onboarding');
-    } catch {
-      setError('Signup failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -62,9 +62,8 @@ export default function SignupPage() {
     setGoogleLoading(true);
     try {
       await auth.loginWithGoogle();
-      router.push('/onboarding');
-    } catch {
-      setError('Google signup failed.');
+    } catch (err: any) {
+      setError(err.message || 'Google signup failed.');
     } finally {
       setGoogleLoading(false);
     }

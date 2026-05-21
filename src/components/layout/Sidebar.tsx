@@ -41,6 +41,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Failed to log out:', err);
+    }
+  };
+
   return (
     <aside
       className={clsx(
@@ -146,7 +154,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <div className="flex flex-col items-center gap-2">
             <Avatar name={user?.name || 'User'} size="sm" />
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Logout"
             >
@@ -163,7 +171,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <p className="text-xs text-slate-500">Owner</p>
             </div>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Logout"
             >
