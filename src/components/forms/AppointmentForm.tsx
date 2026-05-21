@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { type Appointment } from '@/lib/types';
-import { mockLeads } from '@/lib/mock-data';
+import { useState, useEffect } from 'react';
+import { type Appointment, type Lead } from '@/lib/types';
+import { fetchLeads } from '@/lib/leads-db';
 import { generateId } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -16,6 +16,7 @@ interface AppointmentFormProps {
 }
 
 export default function AppointmentForm({ onSubmit, onClose, initialData }: AppointmentFormProps) {
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [leadId, setLeadId] = useState(initialData?.leadId || '');
   const [service, setService] = useState(initialData?.service || '');
   const [date, setDate] = useState(initialData?.date || '');
@@ -24,7 +25,19 @@ export default function AppointmentForm({ onSubmit, onClose, initialData }: Appo
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const leadOptions = mockLeads.map((lead) => ({
+  useEffect(() => {
+    async function loadLeads() {
+      try {
+        const data = await fetchLeads();
+        setLeads(data);
+      } catch (err) {
+        console.error('Failed to load leads in form:', err);
+      }
+    }
+    loadLeads();
+  }, []);
+
+  const leadOptions = leads.map((lead) => ({
     value: lead.id,
     label: lead.name,
   }));
@@ -49,7 +62,7 @@ export default function AppointmentForm({ onSubmit, onClose, initialData }: Appo
     e.preventDefault();
     if (!validate()) return;
 
-    const selectedLead = mockLeads.find((l) => l.id === leadId);
+    const selectedLead = leads.find((l) => l.id === leadId);
     const appointment: Appointment = {
       id: initialData?.id || `apt-${generateId()}`,
       leadId,

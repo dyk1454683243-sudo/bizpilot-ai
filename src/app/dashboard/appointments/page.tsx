@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import clsx from 'clsx';
 import { type Appointment, type AppointmentStatus } from '@/lib/types';
-import { mockAppointments } from '@/lib/mock-data';
+import {
+  fetchAppointments,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+} from '@/lib/appointments-db';
 import { formatDate, formatTime, getAppointmentStatusColor, getToday } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -25,6 +30,8 @@ import {
   List,
   LayoutGrid,
   RefreshCw,
+  Trash2,
+  AlertCircle,
 } from 'lucide-react';
 
 type ViewMode = 'list' | 'calendar';
@@ -81,7 +88,9 @@ function getCalendarBlockColor(status: AppointmentStatus) {
 }
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('list');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -90,9 +99,27 @@ export default function AppointmentsPage() {
 
   const today = getToday();
 
+  async function loadAppointments() {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await fetchAppointments();
+      setAppointments(data);
+    } catch (err: any) {
+      console.error('Error fetching appointments:', err);
+      setError(err.message || 'Failed to load appointments.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
   // Stats
   const todayCount = useMemo(
-    () => appointments.filter((a) => a.date === today).length,
+    () => appointments.filter((a) => a.date === today && a.status !== 'cancelled').length,
     [appointments, today]
   );
 
@@ -101,7 +128,7 @@ export default function AppointmentsPage() {
   const weekEnd = weekDates[6].toISOString().split('T')[0];
 
   const weekCount = useMemo(
-    () => appointments.filter((a) => a.date >= weekStart && a.date <= weekEnd).length,
+    () => appointments.filter((a) => a.date >= weekStart && a.date <= weekEnd && a.status !== 'cancelled').length,
     [appointments, weekStart, weekEnd]
   );
 
@@ -124,42 +151,75 @@ export default function AppointmentsPage() {
   }, [appointments, statusFilter]);
 
   // Actions
-  function confirmAppointment(id: string) {
-    const apt = appointments.find((a) => a.id === id);
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: 'confirmed' as AppointmentStatus } : a))
-    );
-    showToast(`Appointment confirmed for ${apt?.leadName || 'client'}`, 'success');
+  async function confirmAppointment(id: string) {
+    try {
+      const updated = await updateAppointment(id, { status: 'confirmed' });
+      setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      showToast(`Appointment confirmed for ${updated.leadName}`, 'success');
+    } catch (err: any) {
+      showToast('Failed to confirm appointment', 'error');
+    }
   }
 
-  function cancelAppointment(id: string) {
-    const apt = appointments.find((a) => a.id === id);
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: 'cancelled' as AppointmentStatus } : a))
-    );
-    showToast(`Appointment cancelled for ${apt?.leadName || 'client'}`, 'warning');
+  async function cancelAppointment(id: string) {
+    try {
+      const updated = await updateAppointment(id, { status: 'cancelled' });
+      setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      showToast(`Appointment cancelled for ${updated.leadName}`, 'warning');
+    } catch (err: any) {
+      showToast('Failed to cancel appointment', 'error');
+    }
   }
 
-  function sendReminder(id: string) {
-    const apt = appointments.find((a) => a.id === id);
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, reminderSent: true } : a))
-    );
-    showToast(`SMS Reminder simulated to ${apt?.leadName || 'client'} (Demo Mode)`, 'info');
+  async function sendReminder(id: string) {
+    try {
+      const updated = await updateAppointment(id, { reminderSent: true });
+      setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      showToast(`SMS Reminder simulated to ${updated.leadName} (Demo Mode)`, 'info');
+    } catch (err: any) {
+      showToast('Failed to send reminder', 'error');
+    }
   }
 
-  function handleNewAppointment(appointment: Appointment) {
-    setAppointments((prev) => [appointment, ...prev]);
-    setIsFormOpen(false);
-    showToast(`New appointment scheduled for ${appointment.leadName}`, 'success');
+  async function handleNewAppointment(appointment: Omit<Appointment, 'id' | 'createdAt' | 'reminderSent'>) {
+    try {
+      const created = await createAppointment(appointment);
+      setAppointments((prev) => [created, ...prev]);
+      setIsFormOpen(false);
+      showToast(`New appointment scheduled for ${created.leadName}`, 'success');
+    } catch (err: any) {
+      showToast('Failed to create appointment', 'error');
+    }
   }
 
-  function handleReschedule(appointment: Appointment) {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === appointment.id ? appointment : a))
-    );
-    setRescheduleTarget(null);
-    showToast(`Appointment rescheduled for ${appointment.leadName}`, 'success');
+  async function handleReschedule(appointment: Appointment) {
+    try {
+      const updated = await updateAppointment(appointment.id, {
+        date: appointment.date,
+        time: appointment.time,
+        duration: appointment.duration,
+        notes: appointment.notes,
+        status: appointment.status,
+      });
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === appointment.id ? updated : a))
+      );
+      setRescheduleTarget(null);
+      showToast(`Appointment rescheduled for ${updated.leadName}`, 'success');
+    } catch (err: any) {
+      showToast('Failed to reschedule appointment', 'error');
+    }
+  }
+
+  async function handleDeleteAppointment(id: string) {
+    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+    try {
+      await deleteAppointment(id);
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
+      showToast('Appointment deleted successfully', 'success');
+    } catch (err: any) {
+      showToast('Failed to delete appointment', 'error');
+    }
   }
 
   // Calendar view helpers
@@ -186,19 +246,19 @@ export default function AppointmentsPage() {
         <StatCard
           icon={<Calendar className="h-5 w-5 text-indigo-600" />}
           label="Today"
-          value={String(todayCount)}
+          value={isLoading ? '...' : String(todayCount)}
           className="border border-indigo-100 bg-indigo-50/30"
         />
         <StatCard
           icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
           label="This Week"
-          value={String(weekCount)}
+          value={isLoading ? '...' : String(weekCount)}
           className="border border-blue-100 bg-blue-50/30"
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-amber-600" />}
           label="Pending Confirmation"
-          value={String(pendingCount)}
+          value={isLoading ? '...' : String(pendingCount)}
           className="border border-amber-100 bg-amber-50/30"
         />
       </div>
@@ -244,8 +304,33 @@ export default function AppointmentsPage() {
         )}
       </div>
 
-      {/* List View */}
-      {view === 'list' && (
+      {/* Main Content Area */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="rounded-xl border border-slate-200 bg-white p-5 animate-pulse flex items-start gap-4">
+              <div className="w-16 h-16 bg-slate-200 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-slate-200 rounded w-1/4" />
+                <div className="h-3 bg-slate-200 rounded w-1/3" />
+                <div className="h-3 bg-slate-200 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border-2 border-rose-100 bg-rose-50/50 p-6 text-center max-w-xl mx-auto">
+          <AlertCircle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+          <h3 className="font-semibold text-rose-800">Database Connection Error</h3>
+          <p className="text-sm text-rose-600 mt-1">{error}</p>
+          <p className="text-xs text-slate-400 mt-3">
+            Please make sure you have run the migrations script in the Supabase SQL Editor.
+          </p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={loadAppointments}>
+            Retry Connection
+          </Button>
+        </div>
+      ) : view === 'list' ? (
         <div className="space-y-3">
           {filteredAppointments.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
@@ -270,7 +355,7 @@ export default function AppointmentsPage() {
                     <div
                       className={clsx(
                         'shrink-0 w-16 h-16 rounded-xl flex flex-col items-center justify-center',
-                        apt.date === today
+                        apt.date === today && apt.status !== 'cancelled'
                           ? 'bg-indigo-600 text-white'
                           : 'bg-slate-100 text-slate-700'
                       )}
@@ -344,21 +429,22 @@ export default function AppointmentsPage() {
                             Remind
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => cancelAppointment(apt.id)}>
-                          <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                        <Button variant="ghost" size="sm" onClick={() => cancelAppointment(apt.id)} title="Cancel Appointment">
+                          <XCircle className="h-3.5 w-3.5 text-amber-500 hover:text-amber-600" />
                         </Button>
                       </>
                     )}
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteAppointment(apt.id)} title="Delete Appointment">
+                      <Trash2 className="h-3.5 w-3.5 text-rose-500 hover:text-rose-700" />
+                    </Button>
                   </div>
                 </div>
               </div>
             ))
           )}
         </div>
-      )}
-
-      {/* Calendar View */}
-      {view === 'calendar' && (
+      ) : (
+        /* Calendar View */
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           {/* Header */}
           <div className="grid grid-cols-7 border-b border-slate-200">

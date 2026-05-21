@@ -23,11 +23,12 @@ import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/contexts/ToastContext';
 
-import { mockDashboardStats, mockAIReport, mockAppointments } from '@/lib/mock-data';
-import { formatCurrency, timeAgo, formatTime, getLeadStatusColor, getScoreColor, getGreeting } from '@/lib/utils';
+import { mockDashboardStats, mockAIReport } from '@/lib/mock-data';
+import { formatCurrency, timeAgo, formatTime, getLeadStatusColor, getScoreColor, getGreeting, getToday } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchLeads } from '@/lib/leads-db';
-import type { Lead } from '@/lib/types';
+import { fetchAppointments } from '@/lib/appointments-db';
+import type { Lead, Appointment } from '@/lib/types';
 
 // ── Revenue Chart Data (hardcoded for CSS chart) ──────────────────
 const revenueData = [
@@ -56,26 +57,34 @@ export default function DashboardPage() {
   const { showToast } = useToast();
 
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingApts, setIsLoadingApts] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
 
-    async function loadDashboardLeads() {
+    async function loadDashboardData() {
       try {
         setIsLoading(true);
-        const data = await fetchLeads();
-        setLeads(data);
+        setIsLoadingApts(true);
+        const [leadsData, aptsData] = await Promise.all([
+          fetchLeads(),
+          fetchAppointments(),
+        ]);
+        setLeads(leadsData);
+        setAppointments(aptsData);
       } catch (err: any) {
-        console.error('Error fetching leads for dashboard:', err);
-        setError(err.message || 'Failed to load leads.');
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data.');
       } finally {
         setIsLoading(false);
+        setIsLoadingApts(false);
       }
     }
 
-    loadDashboardLeads();
+    loadDashboardData();
   }, []);
 
   const stats = mockDashboardStats;
@@ -95,9 +104,14 @@ export default function DashboardPage() {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 5);
 
-  // Filter appointments for "today" — we use the first few appointments from mock data
-  const todaysAppointments = mockAppointments.filter((a) => a.date === '2026-05-21');
-  const upcomingAppointments = todaysAppointments.length > 0 ? todaysAppointments : mockAppointments.slice(0, 3);
+  const today = getToday();
+  const todaysAppointmentsList = appointments.filter((a) => a.date === today && a.status !== 'cancelled');
+  const todaysAppointmentsCount = isLoadingApts ? '...' : String(todaysAppointmentsList.length);
+  const upcomingAppointments = isLoadingApts
+    ? []
+    : todaysAppointmentsList.length > 0
+      ? todaysAppointmentsList
+      : appointments.filter((a) => a.status !== 'cancelled').slice(0, 3);
 
   const scoreColor = stats.aiBusinessScore >= 80 ? 'text-emerald-600' : stats.aiBusinessScore >= 60 ? 'text-amber-600' : 'text-rose-600';
 
@@ -134,7 +148,7 @@ export default function DashboardPage() {
         <StatCard
           icon={<Calendar className="h-5 w-5 text-blue-500" />}
           label="Today's Appointments"
-          value={String(stats.todaysAppointments)}
+          value={todaysAppointmentsCount}
         />
         <StatCard
           icon={<IndianRupee className="h-5 w-5 text-emerald-600" />}
@@ -273,17 +287,40 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {upcomingAppointments.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={<Calendar className="h-10 w-10 text-slate-300" />}
-                title="No appointments today"
-                description="Your schedule is clear. Book some demos!"
-              />
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {upcomingAppointments.map((apt) => (
+          <div className={clsx(
+            "divide-y divide-slate-50",
+            (isLoadingApts || error || upcomingAppointments.length === 0) && "min-h-[200px] flex flex-col justify-center"
+          )}>
+            {isLoadingApts ? (
+              Array.from({ length: 3 }).map((_, idx) => (
+                <div key={idx} className="flex items-center gap-4 px-6 py-3.5 animate-pulse">
+                  <div className="flex flex-col items-center min-w-[52px] space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-8" />
+                    <div className="h-3 bg-slate-200 rounded w-10" />
+                  </div>
+                  <div className="h-8 w-px bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-1/3" />
+                    <div className="h-3 bg-slate-200 rounded w-1/2" />
+                  </div>
+                  <div className="h-5 bg-slate-200 rounded w-12" />
+                </div>
+              ))
+            ) : error ? (
+              <div className="p-6 text-center">
+                <p className="text-xs text-rose-500 font-semibold mb-1">Failed to load schedule</p>
+                <p className="text-xs text-slate-400">{error}</p>
+              </div>
+            ) : upcomingAppointments.length === 0 ? (
+              <div className="p-6">
+                <EmptyState
+                  icon={<Calendar className="h-10 w-10 text-slate-300" />}
+                  title="No appointments today"
+                  description="Your schedule is clear. Book some demos!"
+                />
+              </div>
+            ) : (
+              upcomingAppointments.map((apt) => (
                 <div key={apt.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-slate-50/80 transition-colors">
                   <div className="flex flex-col items-center min-w-[52px]">
                     <span className="text-sm font-semibold text-indigo-600">{formatTime(apt.time)}</span>
@@ -304,11 +341,12 @@ export default function DashboardPage() {
                     {apt.status}
                   </Badge>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </Card>
       </div>
+
 
       {/* ── Revenue Overview ─────────────────────────── */}
       <Card className="p-6">
