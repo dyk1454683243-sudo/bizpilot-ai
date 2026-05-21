@@ -135,8 +135,8 @@ export interface Invoice {
   amount: number;
   status: InvoiceStatus;
   dueDate: string;
-  paidAt?: string;
-  paymentMethod?: string;
+  paidAt?: string | null;
+  paymentMethod?: string | null;
   notes?: string;
   createdAt: string;
 }

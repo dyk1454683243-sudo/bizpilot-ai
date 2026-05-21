@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { type Invoice, type Lead } from '@/lib/types';
+import { type Invoice, type Lead, type InvoiceStatus } from '@/lib/types';
 import { fetchLeads } from '@/lib/leads-db';
 import { generateId } from '@/lib/utils';
 import Button from '@/components/ui/Button';
@@ -12,18 +12,20 @@ import { Receipt, FileText } from 'lucide-react';
 interface InvoiceFormProps {
   onSubmit: (invoice: Invoice) => void;
   onClose: () => void;
-  nextNumber: number;
+  nextNumber?: number;
+  invoiceToEdit?: Invoice;
 }
 
-export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFormProps) {
-  const invoiceNumber = `INV-2026-${String(nextNumber).padStart(3, '0')}`;
+export default function InvoiceForm({ onSubmit, onClose, nextNumber = 1, invoiceToEdit }: InvoiceFormProps) {
+  const invoiceNumber = invoiceToEdit ? invoiceToEdit.invoiceNumber : `INV-2026-${String(nextNumber).padStart(3, '0')}`;
 
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [leadId, setLeadId] = useState('');
-  const [service, setService] = useState('');
-  const [amount, setAmount] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [leadId, setLeadId] = useState(invoiceToEdit?.leadId || '');
+  const [service, setService] = useState(invoiceToEdit?.service || '');
+  const [amount, setAmount] = useState(invoiceToEdit ? String(invoiceToEdit.amount) : '');
+  const [dueDate, setDueDate] = useState(invoiceToEdit?.dueDate || '');
+  const [status, setStatus] = useState<InvoiceStatus>(invoiceToEdit?.status || 'unpaid');
+  const [notes, setNotes] = useState(invoiceToEdit?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -43,6 +45,12 @@ export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFo
     label: lead.name,
   }));
 
+  const statusOptions = [
+    { value: 'paid', label: 'Paid' },
+    { value: 'unpaid', label: 'Unpaid' },
+    { value: 'overdue', label: 'Overdue' },
+  ];
+
   function validate(): boolean {
     const newErrors: Record<string, string> = {};
     if (!leadId) newErrors.leadId = 'Please select a client';
@@ -58,17 +66,17 @@ export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFo
 
     const selectedLead = leads.find((l) => l.id === leadId);
     const invoice: Invoice = {
-      id: `inv-${generateId()}`,
+      id: invoiceToEdit ? invoiceToEdit.id : `inv-${generateId()}`,
       invoiceNumber,
       leadId,
-      leadName: selectedLead?.name || '',
-      leadPhone: selectedLead?.phone || '',
+      leadName: selectedLead?.name || invoiceToEdit?.leadName || '',
+      leadPhone: selectedLead?.phone || invoiceToEdit?.leadPhone || '',
       service: service || selectedLead?.serviceInterested || '',
       amount: Number(amount),
-      status: 'unpaid',
+      status: invoiceToEdit ? status : 'unpaid',
       dueDate,
       notes: notes || undefined,
-      createdAt: new Date().toISOString(),
+      createdAt: invoiceToEdit ? invoiceToEdit.createdAt : new Date().toISOString(),
     };
 
     onSubmit(invoice);
@@ -92,6 +100,15 @@ export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFo
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setLeadId(e.target.value)}
         error={errors.leadId}
       />
+
+      {invoiceToEdit && (
+        <Select
+          label="Status"
+          options={statusOptions}
+          value={status}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatus(e.target.value as InvoiceStatus)}
+        />
+      )}
 
       <div className="relative">
         <Input
@@ -147,7 +164,7 @@ export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFo
         </Button>
         <Button variant="primary" type="submit">
           <Receipt className="h-4 w-4 mr-1.5" />
-          Create Invoice
+          {invoiceToEdit ? 'Save Changes' : 'Create Invoice'}
         </Button>
       </div>
     </form>

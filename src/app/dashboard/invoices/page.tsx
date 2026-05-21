@@ -29,6 +29,7 @@ import {
   Clock,
   Banknote,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -69,6 +70,7 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [sentReminders, setSentReminders] = useState<Set<string>>(new Set());
 
   // Fetch invoices on mount
@@ -171,6 +173,31 @@ export default function InvoicesPage() {
     } catch (err: any) {
       console.error('Error deleting invoice:', err);
       showToast('Failed to delete invoice.', 'error');
+    }
+  }
+
+  async function handleEditInvoiceSubmit(updatedInvoice: Invoice) {
+    try {
+      const updated = await updateInvoiceDb(updatedInvoice.id, {
+        leadId: updatedInvoice.leadId,
+        leadName: updatedInvoice.leadName,
+        leadPhone: updatedInvoice.leadPhone,
+        service: updatedInvoice.service,
+        amount: updatedInvoice.amount,
+        status: updatedInvoice.status,
+        dueDate: updatedInvoice.dueDate,
+        notes: updatedInvoice.notes,
+        paidAt: updatedInvoice.status === 'paid' ? (editingInvoice?.paidAt || new Date().toISOString()) : null,
+        paymentMethod: updatedInvoice.status === 'paid' ? (editingInvoice?.paymentMethod || 'UPI') : null,
+      });
+      setInvoices((prev) =>
+        prev.map((inv) => (inv.id === updated.id ? updated : inv))
+      );
+      setEditingInvoice(null);
+      showToast(`Invoice ${updated.invoiceNumber} updated successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error updating invoice:', err);
+      showToast('Failed to update invoice.', 'error');
     }
   }
 
@@ -314,6 +341,9 @@ export default function InvoicesPage() {
                     <Button variant="ghost" size="sm" onClick={() => setViewInvoice(inv)}>
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingInvoice(inv)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -380,6 +410,17 @@ export default function InvoicesPage() {
           onClose={() => setIsFormOpen(false)}
           nextNumber={nextInvoiceNumber}
         />
+      </Modal>
+
+      {/* Edit Invoice Modal */}
+      <Modal isOpen={!!editingInvoice} onClose={() => setEditingInvoice(null)} title="Edit Invoice">
+        {editingInvoice && (
+          <InvoiceForm
+            onSubmit={handleEditInvoiceSubmit}
+            onClose={() => setEditingInvoice(null)}
+            invoiceToEdit={editingInvoice}
+          />
+        )}
       </Modal>
 
       {/* View Invoice Modal */}
