@@ -2,6 +2,8 @@
 
 **Your AI Employee for Sales, Follow-ups, Bookings & Payments.**
 
+🔗 **Live Demo:** [https://bizpilot-ai-ten.vercel.app](https://bizpilot-ai-ten.vercel.app)
+
 BizPilot AI is an all-in-one business operation platform designed specifically for service-based businesses, clinics, salons, coaching centers, and consultants. It streamlines operations by tracking leads, scoring interest levels, booking appointments, drafting WhatsApp follow-up messages (in English and Hinglish), tracking invoices, collecting client reviews, and generating daily AI operations reports.
 
 ---
