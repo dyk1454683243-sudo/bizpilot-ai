@@ -33,6 +33,7 @@ export interface Business {
   workingHours: WorkingHours;
   whatsappNumber: string;
   paymentMethod: string;
+  upiId?: string;
   language: 'english' | 'hinglish';
   goals: string[];
   ownerId: string;
