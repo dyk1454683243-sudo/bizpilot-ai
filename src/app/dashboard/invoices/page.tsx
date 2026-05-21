@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import clsx from 'clsx';
 import { type Invoice, type InvoiceStatus } from '@/lib/types';
-import { mockInvoices } from '@/lib/mock-data';
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -12,6 +11,12 @@ import Select from '@/components/ui/Select';
 import { StatCard } from '@/components/ui/Card';
 import InvoiceForm from '@/components/forms/InvoiceForm';
 import { useToast } from '@/contexts/ToastContext';
+import {
+  fetchInvoices,
+  createInvoice as createInvoiceDb,
+  updateInvoice as updateInvoiceDb,
+  deleteInvoice as deleteInvoiceDb,
+} from '@/lib/invoices-db';
 import {
   Receipt,
   Plus,
@@ -23,6 +28,7 @@ import {
   CreditCard,
   Clock,
   Banknote,
+  Trash2,
 } from 'lucide-react';
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -56,11 +62,31 @@ function getStatusLabel(status: InvoiceStatus) {
 
 export default function InvoicesPage() {
   const { showToast } = useToast();
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [sentReminders, setSentReminders] = useState<Set<string>>(new Set());
+
+  // Fetch invoices on mount
+  useEffect(() => {
+    async function loadInvoices() {
+      try {
+        setIsLoading(true);
+        const data = await fetchInvoices();
+        setInvoices(data);
+      } catch (err: any) {
+        console.error('Failed to fetch invoices:', err);
+        setError(err.message || 'Failed to load invoices.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadInvoices();
+  }, []);
 
   // Revenue stats
   const totalRevenue = useMemo(
@@ -87,21 +113,21 @@ export default function InvoicesPage() {
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [invoices, statusFilter]);
 
-  function markAsPaid(id: string) {
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === id
-          ? {
-              ...inv,
-              status: 'paid' as InvoiceStatus,
-              paidAt: new Date().toISOString(),
-              paymentMethod: 'UPI',
-            }
-          : inv
-      )
-    );
-    const inv = invoices.find((i) => i.id === id);
-    showToast(`Invoice ${inv?.invoiceNumber || ''} marked as paid successfully!`, 'success');
+  async function markAsPaid(id: string) {
+    try {
+      const updated = await updateInvoiceDb(id, {
+        status: 'paid',
+        paidAt: new Date().toISOString(),
+        paymentMethod: 'UPI',
+      });
+      setInvoices((prev) =>
+        prev.map((inv) => (inv.id === id ? updated : inv))
+      );
+      showToast(`Invoice ${updated.invoiceNumber} marked as paid successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error marking invoice as paid:', err);
+      showToast('Failed to mark invoice as paid.', 'error');
+    }
   }
 
   function handleSendReminder(id: string) {
@@ -110,13 +136,58 @@ export default function InvoicesPage() {
     showToast(`SMS & WhatsApp payment reminder sent to ${inv?.leadName} (Simulated)`, 'success');
   }
 
-  function handleNewInvoice(invoice: Invoice) {
-    setInvoices((prev) => [invoice, ...prev]);
-    setIsFormOpen(false);
-    showToast(`Invoice ${invoice.invoiceNumber} created and sent successfully!`, 'success');
+  async function handleNewInvoice(invoice: Invoice) {
+    try {
+      const created = await createInvoiceDb({
+        invoiceNumber: invoice.invoiceNumber,
+        leadId: invoice.leadId,
+        leadName: invoice.leadName,
+        leadPhone: invoice.leadPhone,
+        service: invoice.service,
+        amount: invoice.amount,
+        status: 'unpaid',
+        dueDate: invoice.dueDate,
+        notes: invoice.notes,
+      });
+      setInvoices((prev) => [created, ...prev]);
+      setIsFormOpen(false);
+      showToast(`Invoice ${created.invoiceNumber} created and sent successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error creating invoice:', err);
+      showToast('Failed to create invoice.', 'error');
+    }
+  }
+
+  async function handleDeleteInvoice(id: string) {
+    const inv = invoices.find((i) => i.id === id);
+    if (!inv) return;
+    if (!confirm(`Are you sure you want to delete invoice ${inv.invoiceNumber}?`)) {
+      return;
+    }
+    try {
+      await deleteInvoiceDb(id);
+      setInvoices((prev) => prev.filter((i) => i.id !== id));
+      showToast(`Invoice ${inv.invoiceNumber} deleted successfully!`, 'success');
+    } catch (err: any) {
+      console.error('Error deleting invoice:', err);
+      showToast('Failed to delete invoice.', 'error');
+    }
   }
 
   const nextInvoiceNumber = invoices.length + 1;
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-8 text-center animate-fade-in">
+        <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+        <p className="text-rose-800 font-semibold mb-1">Failed to load invoices</p>
+        <p className="text-sm text-rose-600 mb-4">{error}</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -129,7 +200,7 @@ export default function InvoicesPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">Track payments and manage invoices</p>
         </div>
-        <Button variant="primary" onClick={() => setIsFormOpen(true)}>
+        <Button variant="primary" onClick={() => setIsFormOpen(true)} disabled={isLoading}>
           <Plus className="h-4 w-4 mr-1.5" />
           Create Invoice
         </Button>
@@ -140,19 +211,19 @@ export default function InvoicesPage() {
         <StatCard
           icon={<IndianRupee className="h-5 w-5 text-emerald-600" />}
           label="Total Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={isLoading ? '...' : formatCurrency(totalRevenue)}
           className="border border-emerald-100 bg-emerald-50/30"
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-amber-600" />}
           label="Outstanding"
-          value={formatCurrency(outstanding)}
+          value={isLoading ? '...' : formatCurrency(outstanding)}
           className="border border-amber-100 bg-amber-50/30"
         />
         <StatCard
           icon={<AlertTriangle className="h-5 w-5 text-rose-600" />}
           label="Overdue"
-          value={formatCurrency(overdue)}
+          value={isLoading ? '...' : formatCurrency(overdue)}
           className="border border-rose-100 bg-rose-50/30"
         />
       </div>
@@ -160,20 +231,35 @@ export default function InvoicesPage() {
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-sm text-slate-600">
-          Showing <span className="font-semibold text-slate-900">{filteredInvoices.length}</span> invoices
+          Showing <span className="font-semibold text-slate-900">{isLoading ? '...' : filteredInvoices.length}</span> invoices
         </p>
         <div className="w-full sm:w-48">
           <Select
             options={STATUS_FILTERS}
             value={statusFilter}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
+            disabled={isLoading}
           />
         </div>
       </div>
 
       {/* Invoice List */}
       <div className="space-y-3">
-        {filteredInvoices.length === 0 ? (
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl border border-slate-200 bg-white p-5 animate-pulse flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+              <div className="flex-1 space-y-2">
+                <div className="h-5 bg-slate-200 rounded w-1/4" />
+                <div className="h-4 bg-slate-200 rounded w-1/3" />
+                <div className="h-3 bg-slate-200 rounded w-1/2" />
+              </div>
+              <div className="h-6 bg-slate-200 rounded w-16" />
+            </div>
+          ))
+        ) : filteredInvoices.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
             <Receipt className="h-12 w-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No invoices found</p>
@@ -227,6 +313,14 @@ export default function InvoicesPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Button variant="ghost" size="sm" onClick={() => setViewInvoice(inv)}>
                       <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteInvoice(inv.id)}
+                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                     {inv.status !== 'paid' && (
                       <>

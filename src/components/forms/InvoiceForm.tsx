@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { type Invoice } from '@/lib/types';
-import { mockLeads } from '@/lib/mock-data';
+import { useState, useEffect } from 'react';
+import { type Invoice, type Lead } from '@/lib/types';
+import { fetchLeads } from '@/lib/leads-db';
 import { generateId } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -18,6 +18,7 @@ interface InvoiceFormProps {
 export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFormProps) {
   const invoiceNumber = `INV-2026-${String(nextNumber).padStart(3, '0')}`;
 
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [leadId, setLeadId] = useState('');
   const [service, setService] = useState('');
   const [amount, setAmount] = useState('');
@@ -25,7 +26,19 @@ export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFo
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const leadOptions = mockLeads.map((lead) => ({
+  useEffect(() => {
+    async function loadLeads() {
+      try {
+        const data = await fetchLeads();
+        setLeads(data);
+      } catch (err) {
+        console.error('Failed to load leads in InvoiceForm:', err);
+      }
+    }
+    loadLeads();
+  }, []);
+
+  const leadOptions = leads.map((lead) => ({
     value: lead.id,
     label: lead.name,
   }));
@@ -43,7 +56,7 @@ export default function InvoiceForm({ onSubmit, onClose, nextNumber }: InvoiceFo
     e.preventDefault();
     if (!validate()) return;
 
-    const selectedLead = mockLeads.find((l) => l.id === leadId);
+    const selectedLead = leads.find((l) => l.id === leadId);
     const invoice: Invoice = {
       id: `inv-${generateId()}`,
       invoiceNumber,

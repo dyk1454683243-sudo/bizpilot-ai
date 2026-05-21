@@ -28,7 +28,8 @@ import { formatCurrency, timeAgo, formatTime, getLeadStatusColor, getScoreColor,
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchLeads } from '@/lib/leads-db';
 import { fetchAppointments } from '@/lib/appointments-db';
-import type { Lead, Appointment } from '@/lib/types';
+import { fetchInvoices } from '@/lib/invoices-db';
+import type { Lead, Appointment, Invoice } from '@/lib/types';
 
 // ── Revenue Chart Data (hardcoded for CSS chart) ──────────────────
 const revenueData = [
@@ -58,6 +59,7 @@ export default function DashboardPage() {
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingApts, setIsLoadingApts] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,12 +71,14 @@ export default function DashboardPage() {
       try {
         setIsLoading(true);
         setIsLoadingApts(true);
-        const [leadsData, aptsData] = await Promise.all([
+        const [leadsData, aptsData, invoicesData] = await Promise.all([
           fetchLeads(),
           fetchAppointments(),
+          fetchInvoices(),
         ]);
         setLeads(leadsData);
         setAppointments(aptsData);
+        setInvoices(invoicesData);
       } catch (err: any) {
         console.error('Error fetching dashboard data:', err);
         setError(err.message || 'Failed to load dashboard data.');
@@ -86,6 +90,7 @@ export default function DashboardPage() {
 
     loadDashboardData();
   }, []);
+
 
   const stats = mockDashboardStats;
   const report = mockAIReport;
@@ -112,6 +117,15 @@ export default function DashboardPage() {
     : todaysAppointmentsList.length > 0
       ? todaysAppointmentsList
       : appointments.filter((a) => a.status !== 'cancelled').slice(0, 3);
+
+  const revenueCollected = isLoading
+    ? 0
+    : invoices.filter((i) => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0);
+  const thisMonthRevenue = isLoading
+    ? 0
+    : invoices
+        .filter((i) => i.status === 'paid' && new Date(i.createdAt).getMonth() === new Date().getMonth())
+        .reduce((sum, i) => sum + i.amount, 0);
 
   const scoreColor = stats.aiBusinessScore >= 80 ? 'text-emerald-600' : stats.aiBusinessScore >= 60 ? 'text-amber-600' : 'text-rose-600';
 
@@ -153,9 +167,9 @@ export default function DashboardPage() {
         <StatCard
           icon={<IndianRupee className="h-5 w-5 text-emerald-600" />}
           label="Revenue Collected"
-          value={formatCurrency(stats.revenueCollected)}
-          trend="+₹12K this month"
-          trendUp
+          value={isLoading ? '...' : formatCurrency(revenueCollected)}
+          trend={isLoading ? undefined : `+${formatCurrency(thisMonthRevenue)} this month`}
+          trendUp={thisMonthRevenue > 0}
         />
         <StatCard
           icon={<Brain className="h-5 w-5 text-indigo-600" />}
