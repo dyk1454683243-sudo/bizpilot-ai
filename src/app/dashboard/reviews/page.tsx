@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import clsx from 'clsx';
-import { type Review } from '@/lib/types';
-import { mockReviews, mockLeads } from '@/lib/mock-data';
+import { type Review, type Lead } from '@/lib/types';
+import { fetchReviews, createReview, updateReview, deleteReview } from '@/lib/reviews-db';
+import { fetchLeads } from '@/lib/leads-db';
 import { generateReviewRequest } from '@/lib/mock-ai';
-import { formatDate, generateId } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -22,6 +23,10 @@ import {
   Sparkles,
   User,
   Loader2,
+  Trash2,
+  CheckSquare,
+  AlertCircle,
+  Pencil,
 } from 'lucide-react';
 
 function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md' | 'lg' }) {
@@ -43,12 +48,45 @@ function StarRating({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md
 
 export default function ReviewsPage() {
   const { showToast } = useToast();
-  const [reviews, setReviews] = useState<Review[]>(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [generatedMessage, setGeneratedMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSent, setIsSent] = useState(false);
+
+  // States for Completing/Editing a Review
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [completeRating, setCompleteRating] = useState(5);
+  const [completeComment, setCompleteComment] = useState('');
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  async function loadData() {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const [reviewsData, leadsData] = await Promise.all([
+        fetchReviews(),
+        fetchLeads(),
+      ]);
+      setReviews(reviewsData);
+      setLeads(leadsData);
+    } catch (err: any) {
+      console.error('Error loading reviews or leads:', err);
+      setError(err.message || 'Failed to load reviews data.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   // Stats
   const totalReviews = reviews.length;
@@ -66,14 +104,14 @@ export default function ReviewsPage() {
   // Leads who are paid (eligible for review requests)
   const paidLeads = useMemo(
     () =>
-      mockLeads
+      leads
         .filter((l) => l.status === 'paid')
         .filter((l) => !reviews.some((r) => r.leadId === l.id)),
-    [reviews]
+    [leads, reviews]
   );
 
   async function handleGenerateMessage() {
-    const lead = mockLeads.find((l) => l.id === selectedLeadId);
+    const lead = leads.find((l) => l.id === selectedLeadId);
     if (!lead) return;
 
     setIsGenerating(true);
@@ -82,36 +120,93 @@ export default function ReviewsPage() {
       const msg = await generateReviewRequest(lead.name, lead.serviceInterested || 'our service');
       setGeneratedMessage(msg);
       showToast('AI crafted review request message successfully!', 'success');
+    } catch (err: any) {
+      console.error('Error generating review request message:', err);
+      showToast('Failed to generate review request message.', 'error');
     } finally {
       setIsGenerating(false);
     }
   }
 
-  function handleSendRequest() {
-    const lead = mockLeads.find((l) => l.id === selectedLeadId);
+  async function handleSendRequest() {
+    const lead = leads.find((l) => l.id === selectedLeadId);
     if (!lead) return;
 
-    const newReview: Review = {
-      id: `rev-${generateId()}`,
-      leadId: lead.id,
-      leadName: lead.name,
-      service: lead.serviceInterested || '',
-      rating: 0,
-      comment: '',
-      status: 'requested',
-      requestedAt: new Date().toISOString(),
-    };
+    try {
+      const newReview: Omit<Review, 'id'> = {
+        leadId: lead.id,
+        leadName: lead.name,
+        service: lead.serviceInterested || '',
+        rating: 0,
+        comment: '',
+        status: 'requested',
+        requestedAt: new Date().toISOString(),
+      };
 
-    setReviews((prev) => [...prev, newReview]);
-    setIsSent(true);
-    showToast(`Review request sent to ${lead.name} (Simulated)!`, 'success');
+      const created = await createReview(newReview);
+      setReviews((prev) => [created, ...prev]);
+      setIsSent(true);
+      showToast(`Review request sent to ${lead.name}!`, 'success');
 
-    setTimeout(() => {
-      setIsRequestModalOpen(false);
-      setSelectedLeadId('');
-      setGeneratedMessage('');
-      setIsSent(false);
-    }, 1500);
+      setTimeout(() => {
+        setIsRequestModalOpen(false);
+        setSelectedLeadId('');
+        setGeneratedMessage('');
+        setIsSent(false);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Error sending review request:', err);
+      showToast('Failed to send review request.', 'error');
+    }
+  }
+
+  function openCompleteModal(review: Review) {
+    setSelectedReview(review);
+    setCompleteRating(review.rating || 5);
+    setCompleteComment(review.comment || '');
+    setIsCompleteModalOpen(true);
+  }
+
+  async function handleCompleteReview() {
+    if (!selectedReview) return;
+    if (!completeComment.trim()) {
+      showToast('Please enter a testimonial comment.', 'warning');
+      return;
+    }
+
+    try {
+      setIsCompleting(true);
+      const updates: Partial<Review> = {
+        rating: completeRating,
+        comment: completeComment,
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+      };
+
+      const updated = await updateReview(selectedReview.id, updates);
+      setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      showToast(`Successfully updated review from ${selectedReview.leadName}!`, 'success');
+      setIsCompleteModalOpen(false);
+      setSelectedReview(null);
+    } catch (err: any) {
+      console.error('Error updating review:', err);
+      showToast('Failed to update review.', 'error');
+    } finally {
+      setIsCompleting(false);
+    }
+  }
+
+  async function handleDeleteReview(id: string) {
+    if (!confirm('Are you sure you want to delete this review request?')) return;
+
+    try {
+      await deleteReview(id);
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+      showToast('Review request deleted successfully.', 'success');
+    } catch (err: any) {
+      console.error('Error deleting review:', err);
+      showToast('Failed to delete review request.', 'error');
+    }
   }
 
   function closeRequestModal() {
@@ -119,6 +214,53 @@ export default function ReviewsPage() {
     setSelectedLeadId('');
     setGeneratedMessage('');
     setIsSent(false);
+  }
+
+  function closeCompleteModal() {
+    setIsCompleteModalOpen(false);
+    setSelectedReview(null);
+    setCompleteComment('');
+    setCompleteRating(5);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <div className="h-8 bg-slate-200 rounded w-48" />
+            <div className="h-4 bg-slate-200 rounded w-64" />
+          </div>
+          <div className="h-10 bg-slate-200 rounded w-32" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="h-24 bg-slate-200 rounded-xl" />
+          <div className="h-24 bg-slate-200 rounded-xl" />
+          <div className="h-24 bg-slate-200 rounded-xl" />
+        </div>
+        <div className="space-y-4">
+          <div className="h-6 bg-slate-200 rounded w-36" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="h-44 bg-slate-200 rounded-xl" />
+            <div className="h-44 bg-slate-200 rounded-xl" />
+            <div className="h-44 bg-slate-200 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-6 text-center">
+        <AlertCircle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+        <h3 className="text-sm font-semibold text-rose-900">Error loading reviews</h3>
+        <p className="text-xs text-rose-600 mt-1">{error}</p>
+        <Button variant="outline" onClick={loadData} className="mt-4 border-rose-200 text-rose-700 hover:bg-rose-100/50">
+          Try Again
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -176,38 +318,60 @@ export default function ReviewsPage() {
             {completedReviews.map((review) => (
               <div
                 key={review.id}
-                className="rounded-xl border border-slate-200 bg-white p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 group relative overflow-hidden"
+                className="rounded-xl border border-slate-200 bg-white p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 group relative overflow-hidden flex flex-col justify-between"
               >
-                {/* Decorative gradient */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div>
+                  {/* Decorative gradient */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                {/* Quote mark */}
-                <Quote className="h-8 w-8 text-indigo-100 mb-3" />
+                  {/* Quote mark */}
+                  <div className="flex justify-between items-start mb-3">
+                    <Quote className="h-8 w-8 text-indigo-100" />
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => openCompleteModal(review)}
+                        className="text-slate-400 hover:text-indigo-600 p-1"
+                        title="Edit testimonial"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReview(review.id)}
+                        className="text-slate-400 hover:text-rose-600 p-1"
+                        title="Delete testimonial"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
 
-                {/* Comment */}
-                <p className="text-sm text-slate-600 leading-relaxed italic">
-                  &ldquo;{review.comment}&rdquo;
-                </p>
-
-                {/* Rating */}
-                <div className="mt-4">
-                  <StarRating rating={review.rating} />
+                  {/* Comment */}
+                  <p className="text-sm text-slate-600 leading-relaxed italic">
+                    &ldquo;{review.comment}&rdquo;
+                  </p>
                 </div>
 
-                {/* Author */}
-                <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                    {review.leadName.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                <div>
+                  {/* Rating */}
+                  <div className="mt-4">
+                    <StarRating rating={review.rating} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{review.leadName}</p>
-                    <p className="text-xs text-slate-500 truncate">{review.service}</p>
-                  </div>
-                </div>
 
-                <p className="text-[10px] text-slate-400 mt-2">
-                  {review.completedAt && formatDate(review.completedAt)}
-                </p>
+                  {/* Author */}
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                      {review.leadName.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{review.leadName}</p>
+                      <p className="text-xs text-slate-500 truncate">{review.service}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 mt-2">
+                    {review.completedAt && formatDate(review.completedAt)}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -219,13 +383,14 @@ export default function ReviewsPage() {
         <h2 className="text-lg font-semibold text-slate-900 mb-4">All Review Requests</h2>
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           {/* Desktop header */}
-          <div className="hidden sm:grid grid-cols-6 gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="hidden sm:grid grid-cols-7 gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             <span>Lead Name</span>
             <span>Service</span>
             <span>Status</span>
             <span>Requested</span>
             <span>Completed</span>
             <span>Rating</span>
+            <span>Actions</span>
           </div>
 
           {reviews.length === 0 ? (
@@ -238,7 +403,7 @@ export default function ReviewsPage() {
             reviews.map((review) => (
               <div
                 key={review.id}
-                className="grid grid-cols-1 sm:grid-cols-6 gap-2 sm:gap-4 px-5 py-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors"
+                className="grid grid-cols-1 sm:grid-cols-7 gap-2 sm:gap-4 px-5 py-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors items-center"
               >
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-slate-400 shrink-0 sm:hidden" />
@@ -273,6 +438,38 @@ export default function ReviewsPage() {
                   ) : (
                     <span className="text-xs text-slate-400">Awaiting response</span>
                   )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {review.status === 'requested' ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openCompleteModal(review)}
+                      className="text-xs px-2 py-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50 flex items-center gap-1"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      Complete
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openCompleteModal(review)}
+                      className="text-xs px-2 py-1 text-slate-500 hover:text-indigo-600"
+                      title="Edit Review"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteReview(review.id)}
+                    className="text-xs px-2 py-1 text-slate-400 hover:text-rose-600"
+                    title="Delete Request"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             ))
@@ -352,6 +549,65 @@ export default function ReviewsPage() {
               )}
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Complete/Edit Review Modal */}
+      <Modal
+        isOpen={isCompleteModalOpen}
+        onClose={closeCompleteModal}
+        title={selectedReview?.status === 'completed' ? 'Edit Testimonial' : 'Complete Review Feedback'}
+      >
+        <div className="space-y-5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Client:</span>
+            <span className="text-sm font-semibold text-slate-900">{selectedReview?.leadName}</span>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">Rating</label>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => setCompleteRating(i)}
+                  className="focus:outline-none transition-transform hover:scale-110"
+                >
+                  <Star
+                    className={clsx(
+                      "h-7 w-7",
+                      i <= completeRating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-200"
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700 block">Testimonial Comment</label>
+            <textarea
+              className="w-full min-h-[120px] rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              placeholder="Enter client's review comment or feedback..."
+              value={completeComment}
+              onChange={(e) => setCompleteComment(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end items-center gap-3">
+            <Button variant="ghost" onClick={closeCompleteModal}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCompleteReview}
+              isLoading={isCompleting}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              Save Review
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
