@@ -254,18 +254,21 @@ export default function InvoicesPage() {
           label="Total Revenue"
           value={isLoading ? '...' : formatCurrency(totalRevenue)}
           className="border border-emerald-100 bg-emerald-50/30"
+          iconBgClass="bg-emerald-100/80 text-emerald-700"
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-amber-600" />}
           label="Outstanding"
           value={isLoading ? '...' : formatCurrency(outstanding)}
           className="border border-amber-100 bg-amber-50/30"
+          iconBgClass="bg-amber-100/80 text-amber-700"
         />
         <StatCard
           icon={<AlertTriangle className="h-5 w-5 text-rose-600" />}
           label="Overdue"
           value={isLoading ? '...' : formatCurrency(overdue)}
           className="border border-rose-100 bg-rose-50/30"
+          iconBgClass="bg-rose-100/80 text-rose-700"
         />
       </div>
 
@@ -342,20 +345,21 @@ export default function InvoicesPage() {
                       </span>
                     )}
                   </div>
-                </div>
-
-                {/* Amount */}
-                <div className="flex items-center gap-4">
-                  <p className={clsx('text-xl font-bold', getAmountColor(inv.status))}>
-                    {formatCurrency(inv.amount)}
-                  </p>
-
+                  {/* Amount & Actions */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 border-t border-slate-100 sm:border-t-0">
+                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
+                    <span className="text-xs text-slate-400 sm:hidden font-medium">Invoice Amount</span>
+                    <p className={clsx('text-xl font-bold', getAmountColor(inv.status))}>
+                      {formatCurrency(inv.amount)}
+                    </p>
+                  </div>
+ 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" size="sm" onClick={() => setViewInvoice(inv)}>
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-start">
+                    <Button variant="ghost" size="sm" onClick={() => setViewInvoice(inv)} title="View Invoice">
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setEditingInvoice(inv)}>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingInvoice(inv)} title="Edit Invoice">
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
@@ -363,6 +367,7 @@ export default function InvoicesPage() {
                       size="sm"
                       onClick={() => handleDeleteInvoice(inv.id)}
                       className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                      title="Delete Invoice"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -388,7 +393,7 @@ export default function InvoicesPage() {
                       </>
                     )}
                   </div>
-                </div>
+                </div>   </div>
               </div>
 
               {/* Payment automation badge */}

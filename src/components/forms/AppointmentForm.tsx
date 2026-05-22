@@ -103,28 +103,22 @@ export default function AppointmentForm({ onSubmit, onClose, initialData }: Appo
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="relative">
-          <Input
-            label="Date"
-            id="date"
-            type="date"
-            value={date}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)}
-            error={errors.date}
-          />
-          <Calendar className="absolute right-3 top-9 h-4 w-4 text-slate-400 pointer-events-none" />
-        </div>
-        <div className="relative">
-          <Input
-            label="Time"
-            id="time"
-            type="time"
-            value={time}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTime(e.target.value)}
-            error={errors.time}
-          />
-          <Clock className="absolute right-3 top-9 h-4 w-4 text-slate-400 pointer-events-none" />
-        </div>
+        <Input
+          label="Date"
+          id="date"
+          type="date"
+          value={date}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)}
+          error={errors.date}
+        />
+        <Input
+          label="Time"
+          id="time"
+          type="time"
+          value={time}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTime(e.target.value)}
+          error={errors.time}
+        />
       </div>
 
       <Select

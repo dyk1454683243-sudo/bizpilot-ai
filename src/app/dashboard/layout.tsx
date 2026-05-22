@@ -55,9 +55,11 @@ export default function DashboardLayout({
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-white shadow-2xl animate-slide-in-left">
-            <Sidebar collapsed={false} onToggle={() => setMobileMenuOpen(false)} />
-          </aside>
+          <Sidebar
+            collapsed={false}
+            onToggle={() => setMobileMenuOpen(false)}
+            className="fixed left-0 top-0 h-screen flex shadow-2xl animate-slide-in-left"
+          />
         </div>
       )}
 

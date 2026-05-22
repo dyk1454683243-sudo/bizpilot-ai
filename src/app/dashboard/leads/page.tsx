@@ -228,96 +228,92 @@ export default function LeadsPage() {
           />
         </Card>
       ) : (
-        <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lead</TableHead>
-                  <TableHead className="hidden md:table-cell">Service</TableHead>
-                  <TableHead className="hidden sm:table-cell">Source</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>AI Score</TableHead>
-                  <TableHead className="hidden lg:table-cell">Last Contact</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((lead) => (
-                  <TableRow key={lead.id} className="group">
-                    <TableCell>
-                      <Link href={`/dashboard/leads/${lead.id}`} className="flex items-center gap-3 min-w-0">
-                        <Avatar name={lead.name} size="sm" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
-                            {lead.name}
-                          </p>
-                          <p className="text-xs text-slate-400 truncate">{lead.phone}</p>
-                        </div>
-                      </Link>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <span className="text-sm text-slate-600">{lead.serviceInterested || '—'}</span>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <span className="text-sm">
-                        {sourceEmoji(lead.source)}{' '}
-                        <span className="text-slate-600 capitalize">{lead.source}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={clsx('text-xs capitalize', getLeadStatusColor(lead.status))}>
-                        {lead.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className={clsx('text-sm font-bold tabular-nums', getScoreColor(lead.score))}>
-                        {lead.score}
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <span className="text-sm text-slate-400">
-                        {lead.lastContactedAt ? timeAgo(lead.lastContactedAt) : 'Never'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Link
-                          href={`/dashboard/leads/${lead.id}`}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <button
-                          onClick={() => showToast(`Calling ${lead.name} (Simulated)...`, 'info')}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                          title="Call"
-                        >
-                          <Phone className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => showToast(`Opening chat with ${lead.name} (Simulated)...`, 'info')}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="Message"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLead(lead.id, lead.name)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Delete Lead"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Lead</TableHead>
+              <TableHead className="hidden md:table-cell">Service</TableHead>
+              <TableHead className="hidden sm:table-cell">Source</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>AI Score</TableHead>
+              <TableHead className="hidden lg:table-cell">Last Contact</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((lead) => (
+              <TableRow key={lead.id} className="group">
+                <TableCell>
+                  <Link href={`/dashboard/leads/${lead.id}`} className="flex items-center gap-3 min-w-0">
+                    <Avatar name={lead.name} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                        {lead.name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">{lead.phone}</p>
+                    </div>
+                  </Link>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <span className="text-sm text-slate-600">{lead.serviceInterested || '—'}</span>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">
+                  <span className="text-sm">
+                    {sourceEmoji(lead.source)}{' '}
+                    <span className="text-slate-600 capitalize">{lead.source}</span>
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge className={clsx('text-xs capitalize', getLeadStatusColor(lead.status))}>
+                    {lead.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <span className={clsx('text-sm font-bold tabular-nums', getScoreColor(lead.score))}>
+                    {lead.score}
+                  </span>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  <span className="text-sm text-slate-400">
+                    {lead.lastContactedAt ? timeAgo(lead.lastContactedAt) : 'Never'}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={`/dashboard/leads/${lead.id}`}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      title="View Details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                    <button
+                      onClick={() => showToast(`Calling ${lead.name} (Simulated)...`, 'info')}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                      title="Call"
+                    >
+                      <Phone className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => showToast(`Opening chat with ${lead.name} (Simulated)...`, 'info')}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="Message"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteLead(lead.id, lead.name)}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Delete Lead"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {/* ── Add Lead Modal ────────────────────────────── */}

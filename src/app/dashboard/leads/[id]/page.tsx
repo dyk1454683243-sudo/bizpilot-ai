@@ -40,6 +40,7 @@ import {
   getLeadStatusColor,
   getScoreColor,
   getScoreGradient,
+  generateId,
 } from '@/lib/utils';
 import { scoreLead, suggestNextAction } from '@/lib/mock-ai';
 import type { Lead, LeadActivity } from '@/lib/types';
@@ -150,7 +151,7 @@ export default function LeadDetailPage() {
     if (!lead || !newNote.trim()) return;
     try {
       const newActivity: LeadActivity = {
-        id: `act-${crypto.randomUUID()}`,
+        id: `act-${generateId()}`,
         leadId: lead.id,
         type: 'note_added',
         description: `Note added: ${newNote.trim()}`,
@@ -178,7 +179,7 @@ export default function LeadDetailPage() {
       const activities = [...lead.activities];
       if (data.status && data.status !== lead.status) {
         activities.unshift({
-          id: `act-${crypto.randomUUID()}`,
+          id: `act-${generateId()}`,
           leadId: lead.id,
           type: 'status_changed',
           description: `Status changed to ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}`,

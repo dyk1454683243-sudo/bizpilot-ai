@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -30,16 +30,6 @@ import { fetchLeads } from '@/lib/leads-db';
 import { fetchAppointments } from '@/lib/appointments-db';
 import { fetchInvoices } from '@/lib/invoices-db';
 import type { Lead, Appointment, Invoice } from '@/lib/types';
-
-// ── Revenue Chart Data (hardcoded for CSS chart) ──────────────────
-const revenueData = [
-  { month: 'Jan', value: 45000, label: '₹45K' },
-  { month: 'Feb', value: 52000, label: '₹52K' },
-  { month: 'Mar', value: 48000, label: '₹48K' },
-  { month: 'Apr', value: 61000, label: '₹61K' },
-  { month: 'May', value: 12000, label: '₹12K' },
-];
-const maxRevenue = Math.max(...revenueData.map((d) => d.value));
 
 // ── Action Icons Mapping ──────────────────────────────────────────
 function getActionIcon(action: string) {
@@ -127,6 +117,64 @@ export default function DashboardPage() {
         .filter((i) => i.status === 'paid' && new Date(i.createdAt).getMonth() === new Date().getMonth())
         .reduce((sum, i) => sum + i.amount, 0);
 
+  // Dynamic Revenue Chart Data
+  const revenueData = useMemo(() => {
+    const months: { monthName: string; year: number; monthIndex: number; value: number }[] = [];
+    const date = new Date();
+    // Generate last 5 calendar months in order
+    for (let i = 4; i >= 0; i--) {
+      const d = new Date(date.getFullYear(), date.getMonth() - i, 1);
+      months.push({
+        monthName: d.toLocaleString('en-US', { month: 'short' }),
+        year: d.getFullYear(),
+        monthIndex: d.getMonth(),
+        value: 0,
+      });
+    }
+
+    // Accumulate total amount from paid invoices in these months
+    invoices.forEach((inv) => {
+      if (inv.status === 'paid') {
+        const paidDate = new Date(inv.paidAt || inv.createdAt);
+        const m = paidDate.getMonth();
+        const y = paidDate.getFullYear();
+        const match = months.find((entry) => entry.monthIndex === m && entry.year === y);
+        if (match) {
+          match.value += inv.amount;
+        }
+      }
+    });
+
+    return months.map((m) => ({
+      month: m.monthName,
+      value: m.value,
+      label: m.value > 0
+        ? m.value >= 1000
+          ? `₹${(m.value / 1000).toFixed(m.value % 1000 === 0 ? 0 : 1)}K`
+          : `₹${m.value}`
+        : '₹0',
+    }));
+  }, [invoices]);
+
+  const maxRevenue = useMemo(() => {
+    const vals = revenueData.map((d) => d.value);
+    return Math.max(...vals, 1);
+  }, [revenueData]);
+
+  const hasPaidInvoices = useMemo(() => {
+    return revenueData.some((d) => d.value > 0);
+  }, [revenueData]);
+
+  const trendPercentage = useMemo(() => {
+    if (revenueData.length < 2) return 0;
+    const currentMonthVal = revenueData[revenueData.length - 1].value;
+    const prevMonthVal = revenueData[revenueData.length - 2].value;
+    if (prevMonthVal === 0) {
+      return currentMonthVal > 0 ? 100 : 0;
+    }
+    return Math.round(((currentMonthVal - prevMonthVal) / prevMonthVal) * 100);
+  }, [revenueData]);
+
   const scoreColor = stats.aiBusinessScore >= 80 ? 'text-emerald-600' : stats.aiBusinessScore >= 60 ? 'text-amber-600' : 'text-rose-600';
 
   return (
@@ -145,24 +193,28 @@ export default function DashboardPage() {
           value={totalLeadsCount}
           trend={isLoading ? undefined : `Total active`}
           trendUp={!isLoading}
+          iconBgClass="bg-indigo-50 text-indigo-600"
         />
         <StatCard
-          icon={<Flame className="h-5 w-5 text-orange-500" />}
+          icon={<Flame className="h-5 w-5 text-orange-600" />}
           label="Hot Leads"
           value={hotLeadsCount}
           trend="🔥"
           trendUp={!isLoading}
+          iconBgClass="bg-orange-50 text-orange-600"
         />
         <StatCard
-          icon={<Clock className="h-5 w-5 text-amber-500" />}
+          icon={<Clock className="h-5 w-5 text-amber-600" />}
           label="Pending Follow-ups"
           value={pendingFollowUpsCount}
           trend="Action needed"
+          iconBgClass="bg-amber-50 text-amber-600"
         />
         <StatCard
-          icon={<Calendar className="h-5 w-5 text-blue-500" />}
+          icon={<Calendar className="h-5 w-5 text-blue-600" />}
           label="Today's Appointments"
           value={todaysAppointmentsCount}
+          iconBgClass="bg-blue-50 text-blue-600"
         />
         <StatCard
           icon={<IndianRupee className="h-5 w-5 text-emerald-600" />}
@@ -170,12 +222,14 @@ export default function DashboardPage() {
           value={isLoading ? '...' : formatCurrency(revenueCollected)}
           trend={isLoading ? undefined : `+${formatCurrency(thisMonthRevenue)} this month`}
           trendUp={thisMonthRevenue > 0}
+          iconBgClass="bg-emerald-50 text-emerald-600"
         />
         <StatCard
-          icon={<Brain className="h-5 w-5 text-indigo-600" />}
+          icon={<Brain className="h-5 w-5 text-purple-600" />}
           label="AI Business Score"
           value={`${stats.aiBusinessScore}/100`}
           className={scoreColor}
+          iconBgClass="bg-purple-50 text-purple-600"
         />
       </div>
 
@@ -369,11 +423,27 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-slate-900">Revenue Overview</h3>
             <p className="text-sm text-slate-400 mt-0.5">Last 5 months</p>
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-            <TrendingUp className="h-4 w-4" />
-            +18% overall
-          </div>
+          {hasPaidInvoices ? (
+            <div className={clsx(
+              'flex items-center gap-1.5 text-sm font-medium',
+              trendPercentage >= 0 ? 'text-emerald-600' : 'text-rose-600'
+            )}>
+              <TrendingUp className={clsx('h-4 w-4', trendPercentage < 0 && 'rotate-180')} />
+              {trendPercentage >= 0 ? `+${trendPercentage}%` : `${trendPercentage}%`} vs last month
+            </div>
+          ) : (
+            <div className="text-sm text-slate-400">
+              No revenue trend
+            </div>
+          )}
         </div>
+
+        {!hasPaidInvoices && (
+          <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center gap-2 text-sm text-slate-500">
+            <TrendingUp className="h-4 w-4 text-slate-400 animate-pulse" />
+            <span>No paid invoice data yet. Mark invoices as paid to see revenue trends.</span>
+          </div>
+        )}
 
         <div className={clsx(
           'flex items-end justify-between gap-3 sm:gap-6 h-48',

@@ -35,9 +35,10 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  className?: string;
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, className }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, profile } = useAuth();
 
@@ -52,9 +53,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={clsx(
-        'fixed left-0 top-0 h-screen bg-white border-r border-slate-200 z-40',
+        'bg-white border-r border-slate-200 z-40',
         'flex flex-col transition-all duration-300 ease-in-out',
-        'hidden lg:flex',
+        className !== undefined ? className : 'fixed left-0 top-0 h-screen hidden lg:flex',
         collapsed ? 'w-[72px]' : 'w-64'
       )}
     >

@@ -50,6 +50,7 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   className?: string;
+  iconBgClass?: string;
 }
 
 export function StatCard({
@@ -59,6 +60,7 @@ export function StatCard({
   trend,
   trendUp,
   className,
+  iconBgClass,
 }: StatCardProps) {
   return (
     <div
@@ -95,7 +97,7 @@ export function StatCard({
             </div>
           )}
         </div>
-        <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+        <div className={clsx("flex-shrink-0 w-11 h-11 rounded-lg flex items-center justify-center", iconBgClass || 'bg-indigo-50 text-indigo-600')}>
           {icon}
         </div>
       </div>
