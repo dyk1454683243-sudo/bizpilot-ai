@@ -14,6 +14,8 @@ import Badge from '@/components/ui/Badge';
 import Tabs from '@/components/ui/Tabs';
 import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { upsertProfile } from '@/lib/profiles-db';
 import {
   Settings,
   Building2,
@@ -91,33 +93,53 @@ export default function SettingsPage() {
    ============================================================ */
 function BusinessProfileTab() {
   const { showToast } = useToast();
-  const [name, setName] = useState(mockBusiness.name);
-  const [type, setType] = useState(mockBusiness.type);
-  const [whatsapp, setWhatsapp] = useState(mockBusiness.whatsappNumber);
-  const [address, setAddress] = useState('123, MG Road, Pune, Maharashtra 411001');
+  const { profile, refreshProfile } = useAuth();
+  const [name, setName] = useState('');
+  const [type, setType] = useState<any>('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [address, setAddress] = useState('');
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setName(mockBusiness.name);
-    setType(mockBusiness.type);
-    setWhatsapp(mockBusiness.whatsappNumber);
-  }, []);
+    setName(profile?.business_name || mockBusiness.name || '');
+    setType(profile?.business_type || mockBusiness.type || '');
+    setWhatsapp(profile?.phone || mockBusiness.whatsappNumber || '');
+    setAddress(profile?.address || '123, MG Road, Pune, Maharashtra 411001');
+  }, [profile]);
 
-  function handleSave() {
-    mockBusiness.name = name;
-    mockBusiness.type = type;
-    mockBusiness.whatsappNumber = whatsapp;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bizpilot_business', JSON.stringify(mockBusiness));
+  async function handleSave() {
+    setIsSaving(true);
+    setError(null);
+    try {
+      await upsertProfile({
+        business_name: name,
+        business_type: type,
+        phone: whatsapp,
+        address: address,
+      });
+      await refreshProfile();
+      setSaved(true);
+      showToast('Business profile updated successfully!', 'success');
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      console.error('Error saving business profile:', err);
+      setError(err.message || 'Failed to update business profile.');
+      showToast('Failed to update business profile.', 'error');
+    } finally {
+      setIsSaving(false);
     }
-    setSaved(true);
-    showToast('Business profile updated successfully! (Demo Mode)', 'success');
-    setTimeout(() => setSaved(false), 2000);
   }
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6 max-w-2xl">
       <h2 className="text-lg font-semibold text-slate-900 mb-6">Business Profile</h2>
+      {error && (
+        <div className="mb-4 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-3">
+          {error}
+        </div>
+      )}
       <div className="space-y-5">
         <Input
           label="Business Name"
@@ -129,7 +151,7 @@ function BusinessProfileTab() {
           label="Business Type"
           options={BUSINESS_TYPES.map((bt) => ({ value: bt.value, label: `${bt.emoji} ${bt.label}` }))}
           value={type}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setType(e.target.value as typeof type)}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setType(e.target.value as any)}
         />
         <Input
           label="WhatsApp Number"
@@ -145,7 +167,7 @@ function BusinessProfileTab() {
         />
 
         <div className="pt-4 flex items-center gap-3">
-          <Button variant="primary" onClick={handleSave}>
+          <Button variant="primary" onClick={handleSave} isLoading={isSaving}>
             {saved ? (
               <>
                 <CheckCircle2 className="h-4 w-4 mr-1.5" />

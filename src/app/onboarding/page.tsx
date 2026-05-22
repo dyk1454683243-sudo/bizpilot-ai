@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { upsertProfile } from '@/lib/profiles-db';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import {
@@ -171,17 +172,31 @@ export default function OnboardingPage() {
         createdAt: new Date().toISOString(),
       };
 
+      // 1. Sync to Supabase profiles table
+      try {
+        await upsertProfile({
+          business_name: businessName,
+          business_type: businessType,
+          phone: whatsappNumber,
+          owner_name: auth.user?.name || 'Owner',
+          email: auth.user?.email || '',
+        });
+        await auth.refreshProfile();
+      } catch (err) {
+        console.error('Failed to sync profile to Supabase on onboarding:', err);
+      }
+
       // Mutate mockBusiness in memory so it updates immediately on next reads
       Object.assign(mockBusiness, businessData);
 
       localStorage.setItem('bizpilot_business', JSON.stringify(businessData));
 
-      auth.completeOnboarding();
+      await auth.completeOnboarding();
       // Simulate a short delay for UX
       await new Promise((r) => setTimeout(r, 600));
       router.push('/dashboard');
-    } catch {
-      // no-op
+    } catch (err) {
+      console.error('Onboarding completion error:', err);
     } finally {
       setLoading(false);
     }

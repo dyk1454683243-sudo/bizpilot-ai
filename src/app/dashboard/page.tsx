@@ -54,7 +54,7 @@ function getActionIcon(action: string) {
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { showToast } = useToast();
 
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -134,7 +134,7 @@ export default function DashboardPage() {
       {/* ── Page Header ──────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{getGreeting()}, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
-        <p className="text-slate-500 mt-1">Here&apos;s what&apos;s happening with your business today.</p>
+        <p className="text-slate-500 mt-1">Here&apos;s what&apos;s happening with {profile?.business_name || 'your business'} today.</p>
       </div>
 
       {/* ── Stats Grid ───────────────────────────────── */}

@@ -8,6 +8,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { type User } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
+import { type Profile, fetchProfile } from '@/lib/profiles-db';
+import { mockBusiness } from '@/lib/mock-data';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +22,8 @@ interface AuthContextType {
   updateUser: (name: string, email: string) => Promise<void>;
   hasCompletedOnboarding: boolean;
   completeOnboarding: () => void;
+  profile: Profile | null;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +44,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  const refreshProfile = useCallback(async () => {
+    try {
+      const p = await fetchProfile();
+      if (p) {
+        setProfile(p);
+        if (p.business_name) mockBusiness.name = p.business_name;
+        if (p.business_type) mockBusiness.type = p.business_type as any;
+        if (p.phone) mockBusiness.whatsappNumber = p.phone;
+      }
+    } catch (err) {
+      console.error('Error refreshing profile:', err);
+    }
+  }, []);
 
   // Synchronize state and listen to session changes on mount
   useEffect(() => {
@@ -58,8 +77,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               localStorage.setItem('bizpilot_onboarded', 'true');
             }
           }
+          // Fetch Supabase profile
+          try {
+            const p = await fetchProfile();
+            if (p) {
+              setProfile(p);
+              if (p.business_name) mockBusiness.name = p.business_name;
+              if (p.business_type) mockBusiness.type = p.business_type as any;
+              if (p.phone) mockBusiness.whatsappNumber = p.phone;
+            }
+          } catch (e) {
+            console.error('Error loading initial profile:', e);
+          }
         } else {
           setUser(null);
+          setProfile(null);
         }
       } catch (err) {
         console.error('Error fetching initial Supabase session:', err);
@@ -71,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event: any, session: any) => {
         if (session?.user) {
           setUser(mapSupabaseUser(session.user));
           const metadataOnboarded = session.user.user_metadata?.onboarding_completed === true;
@@ -81,8 +113,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setHasCompletedOnboarding(false);
           }
+          // Fetch profile
+          try {
+            const p = await fetchProfile();
+            if (p) {
+              setProfile(p);
+              if (p.business_name) mockBusiness.name = p.business_name;
+              if (p.business_type) mockBusiness.type = p.business_type as any;
+              if (p.phone) mockBusiness.whatsappNumber = p.phone;
+            } else {
+              setProfile(null);
+            }
+          } catch (e) {
+            console.error('Error fetching profile on auth state change:', e);
+          }
         } else {
           setUser(null);
+          setProfile(null);
           setHasCompletedOnboarding(false);
         }
         setIsLoading(false);
@@ -132,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('bizpilot_onboarded');
     setHasCompletedOnboarding(false);
     setUser(null);
+    setProfile(null);
   }, []);
 
   const updateUser = useCallback(async (name: string, email: string) => {
@@ -173,6 +221,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateUser,
         hasCompletedOnboarding,
         completeOnboarding,
+        profile,
+        refreshProfile,
       }}
     >
       {children}

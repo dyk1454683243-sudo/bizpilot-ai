@@ -39,7 +39,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, profile } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -168,7 +168,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <p className="text-sm font-medium text-slate-900 truncate">
                 {user?.name || 'User'}
               </p>
-              <p className="text-xs text-slate-500">Owner</p>
+              <p className="text-xs text-slate-500 truncate" title={`Owner @ ${profile?.business_name || 'your business'}`}>
+                Owner @ {profile?.business_name || 'your business'}
+              </p>
             </div>
             <button
               onClick={handleLogout}

@@ -8,12 +8,15 @@ import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { useAuth } from '@/contexts/AuthContext';
+import { upsertProfile } from '@/lib/profiles-db';
 
 export default function SimpleSettingsPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, profile, refreshProfile } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [saved, setSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -22,11 +25,31 @@ export default function SimpleSettingsPage() {
     }
   }, [user]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser(name, email);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setIsLoading(true);
+    setError(null);
+    try {
+      // 1. Update Auth user metadata/email
+      await updateUser(name, email);
+
+      // 2. Sync to Supabase profiles table
+      await upsertProfile({
+        owner_name: name,
+        email: email,
+      });
+
+      // 3. Refresh profile state globally
+      await refreshProfile();
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      console.error('Error updating settings:', err);
+      setError(err.message || 'Failed to update settings. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -107,15 +130,27 @@ export default function SimpleSettingsPage() {
               />
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-              {saved && (
-                <span className="text-sm text-emerald-600 font-medium animate-pulse">
-                  Changes saved successfully!
-                </span>
+            <div className="pt-6 border-t border-slate-100 flex flex-col gap-3">
+              {error && (
+                <div className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-3">
+                  {error}
+                </div>
               )}
-              <Button type="submit" variant="primary" className={saved ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>
-                Save Changes
-              </Button>
+              <div className="flex items-center justify-between">
+                {saved && (
+                  <span className="text-sm text-emerald-600 font-medium animate-pulse">
+                    Changes saved successfully!
+                  </span>
+                )}
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  isLoading={isLoading}
+                  className={saved ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                >
+                  Save Changes
+                </Button>
+              </div>
             </div>
           </form>
         </Card>
