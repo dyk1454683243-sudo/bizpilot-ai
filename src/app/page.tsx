@@ -202,13 +202,13 @@ export default function LandingPage() {
                 <span>Your AI Employee is Ready to Work</span>
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight sm:leading-none mb-6">
-                Your AI Employee for{' '}
+                Automate Leads, Bookings & Payments{' '}
                 <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                  Sales, Bookings & Payments
+                  with AI Operations
                 </span>
               </h1>
               <p className="text-lg text-slate-600 max-w-xl mb-8 leading-relaxed">
-                Never lose a customer again. BizPilot AI helps small businesses capture leads, automate follow-ups, book appointments, collect reviews, and grow revenue — all in one simple, mobile-friendly app.
+                Automate your lead tracking, client scheduling, and payments with a unified AI-powered operations center designed specifically for local service businesses. Save hours of manual follow-ups every week.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <Button
@@ -667,8 +667,8 @@ export default function LandingPage() {
           <div>
             <h5 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Legal</h5>
             <ul className="space-y-2 text-xs">
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+              <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
               <li><a href="#" className="hover:text-white transition-colors">Contact Support</a></li>
             </ul>
           </div>

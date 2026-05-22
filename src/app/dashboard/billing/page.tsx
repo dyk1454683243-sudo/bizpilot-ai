@@ -47,7 +47,6 @@ export default function BillingPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState<string | null>(null); // tracks plan name loading
 
-  // Helper to load Razorpay Checkout Script
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if ((window as any).Razorpay) {
@@ -57,8 +56,20 @@ export default function BillingPage() {
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
+
+      const timeoutId = setTimeout(() => {
+        script.remove();
+        resolve(false);
+      }, 10000); // 10-second timeout
+
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        resolve(true);
+      };
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        resolve(false);
+      };
       document.body.appendChild(script);
     });
   };
@@ -178,6 +189,7 @@ export default function BillingPage() {
             fetchData();
           } catch (verifyErr: any) {
             showToast(verifyErr.message || 'Signature verification failed. Payment not recorded.', 'error');
+            fetchData();
           }
         },
         prefill: {

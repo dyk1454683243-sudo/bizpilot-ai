@@ -8,16 +8,19 @@ BizPilot AI is an all-in-one business operation platform designed specifically f
 
 ---
 
-## 🚀 Current Status: Mock MVP
-This repository contains a fully responsive and highly interactive **Mock MVP frontend**.
-> [!NOTE]
-> **No active integrations are wired yet.** Authentication, database storage, AI generation, and payment processing are entirely mocked using stateful client-side storage (`localStorage` and in-memory contexts) to provide a smooth, functional prototype without requiring live credentials.
+## 🚀 Active Integrations & Architecture
+BizPilot AI is built as a complete Next.js full-stack application integrated with:
+- **Supabase Backend**:
+  - **Authentication**: Email/Password and Google OAuth integrations.
+  - **Database (PostgreSQL)**: Relational schemas tracking Leads CRM, Appointments scheduler, Invoices, Business Profiles, and Settings.
+- **Razorpay Integration (Test Mode)**:
+  - Dynamic checkout SDK integrations allowing simulated subscription upgrades and payment verification workflows.
 
 ---
 
 ## ✨ Features
 1. **Landing Page**: Visually premium showcase highlighting product suites, use cases by business type, FAQs, and subscription plans.
-2. **Mock Authentication**: Full login and signup screens which persist user sessions locally via React Context.
+2. **Secure Authentication**: Full login and signup screens with session management handled via Supabase.
 3. **Onboarding Wizard**: A 4-step interactive business configuration setup (saves preferences, payment methods, working hours, and goals) with stateful persistence.
 4. **Interactive Dashboard**: Stat cards, recent appointments, invoice tracking, recent leads list, and a smart AI recommendation feed.
 5. **Lead CRM**: View, search, and filter leads. View individual lead detail pages with action histories, timeline logs, and custom AI follow-up generators.
@@ -36,9 +39,10 @@ This repository contains a fully responsive and highly interactive **Mock MVP fr
 ## 🛠️ Tech Stack
 - **Framework**: [Next.js](https://nextjs.org/) (App Router, Turbopack, React 19)
 - **Language**: TypeScript
+- **Database / Auth**: [Supabase](https://supabase.com/)
+- **Payments**: [Razorpay](https://razorpay.com/) (Test Mode)
 - **Styling**: TailwindCSS v4 with custom styling tokens (CSS custom properties, custom animations)
 - **Icons**: Lucide React
-- **Session & Persistence**: Stateful React Context + local storage (`localStorage`)
 
 ---
 
@@ -48,21 +52,34 @@ This repository contains a fully responsive and highly interactive **Mock MVP fr
 Make sure you have Node.js (version 18+ recommended) installed on your system.
 
 ### Steps
-1. **Install Dependencies**:
+1. **Clone the repository and install dependencies**:
    ```bash
    npm install
    ```
-2. **Run Development Server**:
+
+2. **Configure Environment Variables**:
+   Copy `.env.example` to `.env.local` in the project root:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Open `.env.local` and fill in your Supabase connection strings and Razorpay Key IDs:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase Project API URL.
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase API Anon / Publishable Key.
+   - `NEXT_PUBLIC_RAZORPAY_KEY_ID`: Your Razorpay Merchant Key ID (Test Mode).
+   - `RAZORPAY_KEY_SECRET`: Your Razorpay API Key Secret (Test Mode).
+   - `RAZORPAY_WEBHOOK_SECRET`: Your Razorpay Webhook Signing Secret.
+
+3. **Run Development Server**:
    ```bash
    npm run dev
    ```
-3. **Open browser**:
    Navigate to `http://localhost:3000` to view and interact with the application.
 
-4. **Production Build**:
+4. **Verify Type Checks and Production Build**:
+   To ensure the application compiles cleanly without errors:
    ```bash
-   npm run build
+   npx tsc --noEmit
    ```
    ```bash
-   npm run start
+   npm run build
    ```

@@ -150,9 +150,20 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold text-slate-900 mb-1">
             Welcome back
           </h2>
-          <p className="text-sm text-slate-500 mb-8">
+          <p className="text-sm text-slate-500 mb-6">
             Sign in to your BizPilot AI account
           </p>
+
+          {/* Sandbox Info Card */}
+          <div className="mb-6 p-4 bg-indigo-50/70 border border-indigo-100 rounded-xl text-indigo-950 text-xs leading-relaxed space-y-1">
+            <span className="font-bold flex items-center gap-1.5 text-indigo-700 text-sm mb-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              Sandbox Test Mode Active
+            </span>
+            <p>
+              BizPilot AI is running in a secure sandbox. You can sign up with any email to instantly explore lead tracking, score leads, schedule calendar bookings, and test invoice upgrades.
+            </p>
+          </div>
 
           {error && (
             <div className="mb-4 p-3 bg-rose-50 text-rose-700 text-sm rounded-lg border border-rose-200">
