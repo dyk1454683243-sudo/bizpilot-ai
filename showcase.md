@@ -25,9 +25,9 @@ From an engineering perspective, the system integrates a Next.js App Router fron
 
 ---
 
-## 📄 2. Resume Bullet Points (XYZ Formula)
+## 📄 2. Developer Resume Bullet Points
 
-These bullet points are structured using the Google XYZ Formula: *"Accomplished [X] as measured by [Y], by doing [Z]"*.
+These bullet points are structured using the developer resume bullet points formula: *"Accomplished [X] as measured by [Y], by doing [Z]"*.
 
 ### Technical Version (For Software Engineer / Full-Stack Resumes)
 * **Lead CRM & Security Isolation**: Engineered a full-stack business operations SaaS platform utilizing **Next.js App Router** and **Supabase (PostgreSQL)**, securing 100% tenant data isolation by configuring strict **Row-Level Security (RLS)** policies scoped to user IDs.
