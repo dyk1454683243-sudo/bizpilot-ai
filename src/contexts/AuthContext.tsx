@@ -5,7 +5,7 @@
 // Integrates authentication with Supabase Auth session tracking
 // ============================================================
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { type User } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { type Profile, fetchProfile } from '@/lib/profiles-db';
@@ -40,11 +40,76 @@ const mapSupabaseUser = (sbUser: any): User => {
   };
 };
 
+// Helper to create fallback empty/default profile
+const createDefaultProfile = (userId: string, email?: string, name?: string): Profile => {
+  return {
+    user_id: userId,
+    business_name: mockBusiness.name || '',
+    owner_name: name || '',
+    phone: mockBusiness.whatsappNumber || '',
+    email: email || '',
+    website: '',
+    business_type: mockBusiness.type || '',
+    address: '123, MG Road, Pune, Maharashtra 411001',
+  };
+};
+
+// Helper to fetch profile with a safety timeout to prevent blocking page loads
+const fetchProfileWithTimeout = async (userId: string, timeoutMs: number = 3000): Promise<Profile | null> => {
+  try {
+    return await Promise.race([
+      fetchProfile(userId),
+      new Promise<null>((resolve) =>
+        setTimeout(() => {
+          console.warn(`Profile fetch timed out for user ${userId} after ${timeoutMs}ms`);
+          resolve(null);
+        }, timeoutMs)
+      ),
+    ]);
+  } catch (err) {
+    console.error('fetchProfileWithTimeout caught error:', err);
+    return null;
+  }
+};
+
+// Safe LocalStorage access wrappers to prevent crashes in sandboxed/restricted environments
+const safeGetItem = (key: string): string | null => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem(key);
+    }
+  } catch (e) {
+    console.warn('Error reading from localStorage:', e);
+  }
+  return null;
+};
+
+const safeSetItem = (key: string, value: string): void => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(key, value);
+    }
+  } catch (e) {
+    console.warn('Error writing to localStorage:', e);
+  }
+};
+
+const safeRemoveItem = (key: string): void => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(key);
+    }
+  } catch (e) {
+    console.warn('Error removing from localStorage:', e);
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const refreshProfile = useCallback(async () => {
     if (!user?.id) return;
@@ -63,37 +128,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Synchronize state and listen to session changes on mount
   useEffect(() => {
-    const getInitialSession = async () => {
+    const handleUserSession = (session: any) => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          setUser(mapSupabaseUser(session.user));
+          const u = mapSupabaseUser(session.user);
+          setUser(u);
+          const userId = session.user.id;
+          currentUserIdRef.current = userId;
+
           // Read onboarding preference from metadata or localStorage
           const metadataOnboarded = session.user.user_metadata?.onboarding_completed === true;
-          const localOnboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
+          const localOnboarded = safeGetItem('onboardingCompleted') === 'true' || safeGetItem('bizpilot_onboarded') === 'true';
           if (metadataOnboarded || localOnboarded) {
             setHasCompletedOnboarding(true);
             if (!localOnboarded) {
-              localStorage.setItem('onboardingCompleted', 'true');
-              localStorage.setItem('bizpilot_onboarded', 'true');
+              safeSetItem('onboardingCompleted', 'true');
+              safeSetItem('bizpilot_onboarded', 'true');
             }
+          } else {
+            setHasCompletedOnboarding(false);
           }
-          // Fetch Supabase profile
-          try {
-            const p = await fetchProfile(session.user.id);
-            if (p) {
-              setProfile(p);
-              if (p.business_name) mockBusiness.name = p.business_name;
-              if (p.business_type) mockBusiness.type = p.business_type as any;
-              if (p.phone) mockBusiness.whatsappNumber = p.phone;
-            }
-          } catch (e) {
-            console.error('Error loading initial profile:', e);
-          }
+
+          // Fetch Supabase profile in background
+          const userEmail = session.user.email;
+          const userName = session.user.user_metadata?.name || u.name;
+
+          fetchProfileWithTimeout(userId)
+            .then((p) => {
+              if (currentUserIdRef.current === userId) {
+                if (p) {
+                  setProfile(p);
+                  if (p.business_name) mockBusiness.name = p.business_name;
+                  if (p.business_type) mockBusiness.type = p.business_type as any;
+                  if (p.phone) mockBusiness.whatsappNumber = p.phone;
+                } else {
+                  setProfile(createDefaultProfile(userId, userEmail, userName));
+                }
+              }
+            })
+            .catch((e) => {
+              console.error('Background profile fetch failed:', e);
+              if (currentUserIdRef.current === userId) {
+                setProfile(createDefaultProfile(userId, userEmail, userName));
+              }
+            });
         } else {
           setUser(null);
           setProfile(null);
+          currentUserIdRef.current = null;
+          setHasCompletedOnboarding(false);
         }
+      } catch (err) {
+        console.error('Error in handleUserSession:', err);
+      }
+    };
+
+    const getInitialSession = async () => {
+      try {
+        // Race the getSession call against a 3 second safety timeout
+        const session = await Promise.race([
+          supabase.auth.getSession().then(({ data }) => data?.session || null),
+          new Promise<null>((resolve) =>
+            setTimeout(() => {
+              console.warn('Initial session fetch timed out after 3000ms');
+              resolve(null);
+            }, 3000)
+          ),
+        ]);
+        handleUserSession(session);
       } catch (err) {
         console.error('Error fetching initial Supabase session:', err);
       } finally {
@@ -104,36 +206,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: any, session: any) => {
-        if (session?.user) {
-          setUser(mapSupabaseUser(session.user));
-          const metadataOnboarded = session.user.user_metadata?.onboarding_completed === true;
-          const localOnboarded = localStorage.getItem('onboardingCompleted') === 'true' || localStorage.getItem('bizpilot_onboarded') === 'true';
-          if (metadataOnboarded || localOnboarded) {
-            setHasCompletedOnboarding(true);
-          } else {
-            setHasCompletedOnboarding(false);
-          }
-          // Fetch profile
-          try {
-            const p = await fetchProfile(session.user.id);
-            if (p) {
-              setProfile(p);
-              if (p.business_name) mockBusiness.name = p.business_name;
-              if (p.business_type) mockBusiness.type = p.business_type as any;
-              if (p.phone) mockBusiness.whatsappNumber = p.phone;
-            } else {
-              setProfile(null);
-            }
-          } catch (e) {
-            console.error('Error fetching profile on auth state change:', e);
-          }
-        } else {
-          setUser(null);
-          setProfile(null);
-          setHasCompletedOnboarding(false);
+      (event: any, session: any) => {
+        try {
+          handleUserSession(session);
+        } catch (err) {
+          console.error('Error handling auth state change event:', err);
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
@@ -141,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
 
   const login = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -176,8 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
     
     // Clear onboarding status locally
-    localStorage.removeItem('onboardingCompleted');
-    localStorage.removeItem('bizpilot_onboarded');
+    safeRemoveItem('onboardingCompleted');
+    safeRemoveItem('bizpilot_onboarded');
     setHasCompletedOnboarding(false);
     setUser(null);
     setProfile(null);
@@ -196,8 +277,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const completeOnboarding = useCallback(async () => {
     setHasCompletedOnboarding(true);
-    localStorage.setItem('bizpilot_onboarded', 'true');
-    localStorage.setItem('onboardingCompleted', 'true');
+    safeSetItem('bizpilot_onboarded', 'true');
+    safeSetItem('onboardingCompleted', 'true');
 
     // Update Supabase user metadata
     try {
