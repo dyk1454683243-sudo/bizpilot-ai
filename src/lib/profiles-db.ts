@@ -16,24 +16,35 @@ export interface Profile {
 }
 
 // Fetch the profile for the current logged-in user
-export async function fetchProfile(): Promise<Profile | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) {
-    throw new Error('User not authenticated');
+export async function fetchProfile(userId?: string): Promise<Profile | null> {
+  try {
+    let activeUserId = userId;
+
+    if (!activeUserId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      activeUserId = session?.user?.id;
+    }
+
+    if (!activeUserId) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', activeUserId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching profile from Supabase:', error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Safe fetchProfile caught exception:', err);
+    return null;
   }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', session.user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error fetching profile from Supabase:', error);
-    throw error;
-  }
-
-  return data;
 }
 
 // Upsert a profile for the current user (inserts or updates matching unique user_id constraint)

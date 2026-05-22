@@ -47,8 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const refreshProfile = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const p = await fetchProfile();
+      const p = await fetchProfile(user.id);
       if (p) {
         setProfile(p);
         if (p.business_name) mockBusiness.name = p.business_name;
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Error refreshing profile:', err);
     }
-  }, []);
+  }, [user?.id]);
 
   // Synchronize state and listen to session changes on mount
   useEffect(() => {
@@ -79,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           // Fetch Supabase profile
           try {
-            const p = await fetchProfile();
+            const p = await fetchProfile(session.user.id);
             if (p) {
               setProfile(p);
               if (p.business_name) mockBusiness.name = p.business_name;
@@ -115,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           // Fetch profile
           try {
-            const p = await fetchProfile();
+            const p = await fetchProfile(session.user.id);
             if (p) {
               setProfile(p);
               if (p.business_name) mockBusiness.name = p.business_name;
