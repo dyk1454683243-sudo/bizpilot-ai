@@ -126,8 +126,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id]);
 
-  // Synchronize state and listen to session changes on mount
+  // Synchronize state and listen to session changes on mount.
+  // IMPORTANT: We use ONLY onAuthStateChange (not getSession()) to detect the
+  // initial session. In @supabase/supabase-js v2.39+, onAuthStateChange fires
+  // an INITIAL_SESSION event immediately. Calling getSession() alongside it
+  // creates a race condition / internal lock deadlock that can leave isLoading
+  // stuck at true forever on page refresh.
   useEffect(() => {
+    let isMounted = true;
+
+    // Safety timeout: absolute guarantee that isLoading becomes false.
+    // If onAuthStateChange never fires (e.g. Supabase misconfigured), this
+    // prevents an infinite spinner.
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) {
+        console.warn('Auth initialization safety timeout (5 s) — forcing isLoading=false');
+        setIsLoading(false);
+      }
+    }, 5000);
+
     const handleUserSession = (session: any) => {
       try {
         if (session?.user) {
@@ -149,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setHasCompletedOnboarding(false);
           }
 
-          // Fetch Supabase profile in background
+          // Fetch Supabase profile in background — never blocks loading
           const userEmail = session.user.email;
           const userName = session.user.user_metadata?.name || u.name;
 
@@ -183,41 +200,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    const getInitialSession = async () => {
-      try {
-        // Race the getSession call against a 3 second safety timeout
-        const session = await Promise.race([
-          supabase.auth.getSession().then(({ data }) => data?.session || null),
-          new Promise<null>((resolve) =>
-            setTimeout(() => {
-              console.warn('Initial session fetch timed out after 3000ms');
-              resolve(null);
-            }, 3000)
-          ),
-        ]);
-        handleUserSession(session);
-      } catch (err) {
-        console.error('Error fetching initial Supabase session:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getInitialSession();
-
+    // onAuthStateChange is the sole session-detection mechanism.
+    // It fires INITIAL_SESSION synchronously on setup in v2.39+,
+    // then SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED as they occur.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: any, session: any) => {
         try {
           handleUserSession(session);
         } catch (err) {
-          console.error('Error handling auth state change event:', err);
+          console.error('Error handling auth state change:', err);
         } finally {
-          setIsLoading(false);
+          if (isMounted) {
+            setIsLoading(false);
+            clearTimeout(safetyTimer);
+          }
         }
       }
     );
 
     return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
