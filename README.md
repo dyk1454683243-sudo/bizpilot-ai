@@ -1,55 +1,70 @@
 # BizPilot AI
 
-**Your AI Employee for Sales, Follow-ups, Bookings & Payments.**
+**Automate Leads, Bookings & Payments with AI Operations**
 
 🔗 **Live Demo:** [https://bizpilot-ai-ten.vercel.app](https://bizpilot-ai-ten.vercel.app)
 
-BizPilot AI is an all-in-one business operation platform designed specifically for service-based businesses, clinics, salons, coaching centers, and consultants. It streamlines operations by tracking leads, scoring interest levels, booking appointments, drafting WhatsApp follow-up messages (in English and Hinglish), tracking invoices, collecting client reviews, and generating daily AI operations reports.
+BizPilot AI is a modern, unified business operations platform designed specifically for local service businesses (such as tutoring centers, salons, cleaning agencies, and local contractors). It consolidates critical administrative workflows—lead tracking, calendar scheduling, invoice collection, and testimonial feedback—into a single responsive SaaS dashboard.
 
 ---
 
-## 🚀 Active Integrations & Architecture
-BizPilot AI is built as a complete Next.js full-stack application integrated with:
-- **Supabase Backend**:
-  - **Authentication**: Email/Password and Google OAuth integrations.
-  - **Database (PostgreSQL)**: Relational schemas tracking Leads CRM, Appointments scheduler, Invoices, Business Profiles, and Settings.
-- **Razorpay Integration (Test Mode)**:
-  - Dynamic checkout SDK integrations allowing simulated subscription upgrades and payment verification workflows.
+## 📸 Screenshots (Placeholders)
+
+> *Add high-resolution screenshots here once captured:*
+
+| Landing Page Hero | Owner Analytics Dashboard |
+| :---: | :---: |
+| ![Landing Page Placeholder](https://via.placeholder.com/600x350/4f46e5/ffffff?text=Landing+Page+Hero+Visual) | ![Dashboard Placeholder](https://via.placeholder.com/600x350/0f172a/ffffff?text=Analytics+Dashboard+Overview) |
+
+| Lead CRM & Detail Panel | Razorpay Checkout (Test Mode) |
+| :---: | :---: |
+| ![CRM Placeholder](https://via.placeholder.com/600x350/ffffff/0f172a?text=CRM+Leads+List+%26+Detail) | ![Razorpay Placeholder](https://via.placeholder.com/600x350/1e293b/ffffff?text=Razorpay+Simulated+Checkout) |
 
 ---
 
-## ✨ Features
-1. **Landing Page**: Visually premium showcase highlighting product suites, use cases by business type, FAQs, and subscription plans.
-2. **Secure Authentication**: Full login and signup screens with session management handled via Supabase.
-3. **Onboarding Wizard**: A 4-step interactive business configuration setup (saves preferences, payment methods, working hours, and goals) with stateful persistence.
-4. **Interactive Dashboard**: Stat cards, recent appointments, invoice tracking, recent leads list, and a smart AI recommendation feed.
-5. **Lead CRM**: View, search, and filter leads. View individual lead detail pages with action histories, timeline logs, and custom AI follow-up generators.
-6. **AI Follow-up Messages**: Instantly generates follow-up messages using customizable tones (Professional, Friendly, Hinglish, Short, or Persuasive) ready for WhatsApp, SMS, or email.
-7. **Appointment Scheduler**: Organized weekly and daily calendars to handle customer bookings and track statuses.
-8. **Invoices**: Create, track, and filter invoices, with automatic status badges and local UPI payment links.
-9. **Review Manager**: Templates and mock logs to request client reviews and showcase business testimonials.
-10. **AI Reports**: Non-technical summary report detailing leads acquired, appointment conversion rates, missed opportunity flags, and daily check-lists.
-11. **Settings Page**: Account profile synchronization, services CRUD management, staff members list, and payment settings.
-12. **Subscription & Billing**: Upgrade pricing plans and view invoice billing history.
-13. **Topbar Utilities**: Real-time notifications bell dropdown and profile shortcut dropdown.
-14. **Mobile Responsive**: Fully optimized bottom-bar navigation and slide-up dialogs for mobile viewports.
+## ⚡ Key Features
+
+1. **Operations Landing Page**: A visually premium marketing showcase highlighting the core product suites, use cases by business type, FAQs, and subscription plans, connected directly to legal disclaimers.
+2. **Interactive Onboarding Wizard**: A step-by-step interactive business configuration setup (saving preferences, payment methods, working hours, and goals) with stateful persistence.
+3. **Owner Dashboard**: At-a-glance analytics showing outstanding invoices, conversion rates, upcoming appointments, and recent leads, paired with a dynamic SQL-driven revenue trends chart.
+4. **Lead CRM**: Full-featured CRM to view, search, and filter client leads. View individual lead detail pages with action histories, timeline logs, and custom AI follow-up message generators.
+5. **AI Follow-up Messages**: Generates customized follow-up text using custom tones (Professional, Friendly, Hinglish, Short, or Persuasive) ready for WhatsApp, SMS, or email.
+6. **Appointment Scheduler**: Organized weekly and daily calendar views to schedule client bookings, track reminders, and manage appointment states (Pending, Confirmed, Cancelled, Completed).
+7. **Automated Invoices**: Create, track, and filter invoices, with automatic status badges (`Paid`, `Unpaid`, `Overdue`) and local UPI payment link generators.
+8. **Testimonial Pipeline**: A feedback management interface. Submitting a review rating and comment updates the Supabase record and dynamically renders the new review onto the public landing page testimonials grid.
+9. **Real-time Reports**: Non-technical summary reports calculating leads acquired, conversion rates, outstanding balances, and monthly growth rates.
+10. **Billing & Subscriptions**: Simulated subscription plan tiers allowing users to trigger a Razorpay Test Mode checkout and track transaction histories.
+11. **Mobile Responsive**: Fully optimized bottom-bar navigation and drawer modal overlays for modern mobile and tablet viewports.
 
 ---
 
 ## 🛠️ Tech Stack
-- **Framework**: [Next.js](https://nextjs.org/) (App Router, Turbopack, React 19)
-- **Language**: TypeScript
-- **Database / Auth**: [Supabase](https://supabase.com/)
-- **Payments**: [Razorpay](https://razorpay.com/) (Test Mode)
-- **Styling**: TailwindCSS v4 with custom styling tokens (CSS custom properties, custom animations)
-- **Icons**: Lucide React
+
+* **Frontend Framework**: [Next.js 15](https://nextjs.org/) (App Router, Turbopack, React 19)
+* **Programming Language**: TypeScript
+* **Database & Auth**: [Supabase](https://supabase.com/) (PostgreSQL & Supabase Auth)
+* **Simulated Payments**: [Razorpay API](https://razorpay.com/) (Test Mode Checkout & Verifications)
+* **Styling & Theme**: TailwindCSS v4 with custom HSL theme tokens and micro-animations
+* **Icons**: Lucide React
+* **Charts & Visuals**: Recharts (fully responsive canvas overlays)
 
 ---
 
-## 💻 How to Run Locally
+## 🔒 Production Safety & Security Notes
+
+BizPilot AI is architected with modern SaaS security standards:
+* **Row-Level Security (RLS)**: Public access to database tables is revoked. PostgreSQL policies ensure that authenticated sessions can only perform SELECT, INSERT, UPDATE, or DELETE queries on records where `auth.uid() = user_id`.
+* **Cryptographic Signatures**: The payment verification API computes a secure `HMAC-SHA256` signature using the private merchant secret to validate Razorpay checkout tokens server-side, preventing client-side spoofing.
+* **Referential Integrity**: Cascading foreign keys (`ON DELETE SET NULL`) ensure that deleting a lead preserves historical invoices and appointment logs for accounting purposes.
+* **Resilient SDK Script Loading**: The Razorpay SDK script injection handles 10-second network timeouts gracefully, cleaning up appended scripts and reverting checkout loaders on failure.
+* **Zero-State Integrity**: Graph calculations and metrics fall back gracefully to a zero-state if no paid invoices or leads are registered in the database, avoiding divide-by-zero crashes.
+
+---
+
+## 💻 Developer Setup & Installation
 
 ### Prerequisites
-Make sure you have Node.js (version 18+ recommended) installed on your system.
+Make sure you have Node.js (version 18+ recommended) and `npm` installed.
 
 ### Steps
 1. **Clone the repository and install dependencies**:
@@ -58,28 +73,35 @@ Make sure you have Node.js (version 18+ recommended) installed on your system.
    ```
 
 2. **Configure Environment Variables**:
-   Copy `.env.example` to `.env.local` in the project root:
+   Copy `.env.example` to `.env.local` at the root of the project:
    ```bash
    cp .env.example .env.local
    ```
-   Open `.env.local` and fill in your Supabase connection strings and Razorpay Key IDs:
-   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase Project API URL.
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase API Anon / Publishable Key.
-   - `NEXT_PUBLIC_RAZORPAY_KEY_ID`: Your Razorpay Merchant Key ID (Test Mode).
-   - `RAZORPAY_KEY_SECRET`: Your Razorpay API Key Secret (Test Mode).
-   - `RAZORPAY_WEBHOOK_SECRET`: Your Razorpay Webhook Signing Secret.
+   Open `.env.local` and configure your API keys:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   NEXT_PUBLIC_RAZORPAY_KEY_ID=your-razorpay-key-id
+   RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+   RAZORPAY_WEBHOOK_SECRET=your-razorpay-webhook-secret
+   ```
 
 3. **Run Development Server**:
    ```bash
    npm run dev
    ```
-   Navigate to `http://localhost:3000` to view and interact with the application.
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 4. **Verify Type Checks and Production Build**:
-   To ensure the application compiles cleanly without errors:
    ```bash
    npx tsc --noEmit
-   ```
-   ```bash
    npm run build
    ```
+
+---
+
+## ⚙️ Current Status
+This application is configured as a **production-ready showcase**:
+* **Database & Auth**: Live (requires configuring Supabase keys).
+* **Payment Processing**: Configured for **Razorpay Test Mode** only. No actual financial transactions take place.
+* **AI Features**: Message text generation is simulated locally using client-side helper models.
