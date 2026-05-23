@@ -1,0 +1,21 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+
+# Allow crawling of public marketing and policy pages
+Allow: /
+Allow: /privacy
+Allow: /terms
+Allow: /pricing
+
+# Disallow crawling of private dashboard, onboarding, and auth modules
+# Note: This is strictly for SEO crawl mapping. Proper authentication gates are the real security layer.
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /onboarding
+Disallow: /login
+Disallow: /signup
+Disallow: /billing
+Disallow: /api/*
+
+# Link to sitemap
+Sitemap: https://bizpilot-ai-ten.vercel.app/sitemap.xml

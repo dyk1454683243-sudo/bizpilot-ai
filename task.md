@@ -72,5 +72,16 @@
 - [x] Perform production build check (npm run build)
 - [x] Finalize task.md checklist updates
 
+---
+
+# Phase 3N Task List (Google Indexing & SEO Readiness)
+
+- [x] Create public/sitemap.xml
+- [x] Create public/robots.txt
+- [x] Run verification commands (git status, npx tsc --noEmit, npm run build)
+
+
+
+
 
 
