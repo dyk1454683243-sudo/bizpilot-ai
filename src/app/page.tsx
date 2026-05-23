@@ -38,15 +38,15 @@ export default function LandingPage() {
   const faqs = [
     {
       q: 'What is BizPilot AI?',
-      a: 'BizPilot AI is an AI-powered Business Operator for service businesses. It acts like an AI employee that automatically tracks your leads, drafts custom follow-up messages (in English & Hinglish), schedules appointments, creates invoices, and analyzes your daily operations to ensure you never lose revenue.',
+      a: 'BizPilot AI is a business operations dashboard demo for service providers. It unifies lead tracking, custom template-based message generation (in English & Hinglish), appointment scheduling, invoices & billing tracking, and business analytics dashboard reports in a single secure console.',
     },
     {
       q: 'Do I need technical knowledge to use it?',
       a: 'Not at all! We designed BizPilot AI specifically for non-technical service owners. If you can use WhatsApp, you can easily manage your entire business on BizPilot AI. Our interface is extremely clean, simple, and intuitive.',
     },
     {
-      q: 'How does the AI Follow-Up feature work?',
-      a: 'Our AI analyzes each lead\'s notes, interested service, and history to generate a highly personalized message. You can select the tone (Professional, Friendly, Hinglish, Short, or Persuasive) and copy it directly to WhatsApp, SMS, or Email in one click.',
+      q: 'How does the Follow-Up generator work?',
+      a: 'The follow-up generator leverages highly optimized messaging templates based on the lead\'s chosen service, status, and notes. You can select the tone (Professional, Friendly, Hinglish, Short, or Persuasive) and copy it directly to WhatsApp, SMS, or Email in one click.',
     },
     {
       q: 'Can I manage my staff on the platform?',
@@ -54,13 +54,14 @@ export default function LandingPage() {
     },
     {
       q: 'Is there a free trial?',
-      a: 'Yes, we have a Free Plan which allows you to manage up to 25 leads per month with basic CRM features. For advanced AI features, follow-up automation, and invoice tracking, you can try our Pro or Business plans with a 14-day free trial.',
+      a: 'Yes, we have a Free Plan which allows you to manage up to 25 leads per month with basic CRM features. For template follow-up message generation, calendar scheduling, and invoice tracking, you can try our Pro or Business plans with a 14-day free trial.',
     },
     {
       q: 'Can I cancel or change my plan anytime?',
       a: 'Yes, you can upgrade, downgrade, or cancel your subscription at any time directly from your billing settings. There are no long-term contracts or cancellation fees.',
     },
   ];
+
 
   const testimonials = [
     {
@@ -199,16 +200,16 @@ export default function LandingPage() {
             <div className="md:col-span-7 flex flex-col items-start text-left">
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold mb-6 animate-fade-in">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>Your AI Employee is Ready to Work</span>
+                <span>Full-stack business dashboard demo</span>
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight sm:leading-none mb-6">
-                Automate Leads, Bookings & Payments{' '}
+                Manage Leads, Bookings &{' '}
                 <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                  with AI Operations
+                  Invoices & Billing
                 </span>
               </h1>
               <p className="text-lg text-slate-600 max-w-xl mb-8 leading-relaxed">
-                Automate your lead tracking, client scheduling, and payments with a unified AI-powered operations center designed specifically for local service businesses. Save hours of manual follow-ups every week.
+                Manage leads, appointments, invoices, reports, and billing flows with a unified full-stack SaaS-style dashboard. Built with Next.js, Supabase, Tailwind CSS, and Razorpay Test Mode.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <Button
@@ -232,20 +233,21 @@ export default function LandingPage() {
               <div className="mt-12 border-t border-slate-200 pt-8 w-full max-w-lg">
                 <div className="grid grid-cols-3 gap-6">
                   <div>
-                    <p className="text-2xl font-bold text-slate-900">2,500+</p>
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Businesses*</p>
+                    <p className="text-2xl font-bold text-slate-900">Public</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">GitHub Repo*</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-slate-900">50K+</p>
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Leads Managed*</p>
+                    <p className="text-2xl font-bold text-slate-900">Real-Time</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Supabase DB*</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-slate-900">₹2Cr+</p>
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Payments Tracked*</p>
+                    <p className="text-2xl font-bold text-slate-900">Simulated</p>
+                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-1">Razorpay SDK*</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-3 italic">*Metrics are simulated for MVP preview and demonstration purposes</p>
+                <p className="text-[10px] text-slate-400 mt-3 italic">*Demo metrics and integrations shown for presentation only.</p>
               </div>
+
             </div>
 
             {/* Right Hero Illustration */}
@@ -326,8 +328,9 @@ export default function LandingPage() {
               Everything you need to run your business like a pro
             </h3>
             <p className="text-lg text-slate-600">
-              BizPilot AI replaces multiple disjointed tools with a single, integrated platform designed specifically for service-based businesses.
+              BizPilot AI unifies multiple disjointed tools into a full-stack SaaS-style dashboard built specifically for service-based businesses.
             </p>
+
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -369,11 +372,12 @@ export default function LandingPage() {
               <div className="h-12 w-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mb-6">
                 <Receipt className="h-6 w-6" />
               </div>
-              <h4 className="text-xl font-bold text-slate-900 mb-3">Invoices & Payments</h4>
+              <h4 className="text-xl font-bold text-slate-900 mb-3">Invoices & Billing</h4>
               <p className="text-slate-600 leading-relaxed">
-                Create simple professional invoices. Track who has paid, send UPI payment reminders, and see monthly collections. Ready for Razorpay/Stripe placeholder linkages.
+                Create simple professional invoices. Track who has paid, send UPI billing reminders, and see monthly collections. Ready for Razorpay/Stripe placeholder linkages.
               </p>
             </div>
+
 
             {/* Feature 5 */}
             <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200/60 hover:shadow-lg hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 flex flex-col">
@@ -479,8 +483,9 @@ export default function LandingPage() {
               Simple, transparent pricing
             </h3>
             <p className="text-lg text-slate-600">
-              Start with our free tier, upgrade when you need AI and staff management.
+              Start with our free tier, upgrade when you need template features and staff management.
             </p>
+
 
             {/* Toggle Billing Period */}
             <div className="inline-flex items-center gap-3 mt-6 bg-white p-1 rounded-full border border-slate-200">
@@ -609,8 +614,9 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 text-center relative z-10 space-y-6">
           <h2 className="text-3xl sm:text-5xl font-extrabold leading-tight">Ready to pilot your business to success?</h2>
           <p className="text-indigo-100 text-lg max-w-xl mx-auto">
-            Designed for small business owners to save 10+ hours a week and scale sales using smart operations automation.
+            Designed for small business owners to save 10+ hours a week and scale sales using a unified operations dashboard.
           </p>
+
           <div className="pt-4">
             <Button
               onClick={() => router.push('/signup')}
@@ -642,8 +648,9 @@ export default function LandingPage() {
               </span>
             </Link>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Your AI Employee for Sales, Follow-ups, Bookings & Payments. Designed specifically for small service businesses.
+              Manage leads, appointments, invoices & billing, reports, and settings in a full-stack SaaS dashboard demo.
             </p>
+
           </div>
 
           <div>
