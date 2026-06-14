@@ -8,17 +8,15 @@ BizPilot AI is a modern, unified business operations platform designed specifica
 
 ---
 
-## 📸 Screenshots (Placeholders)
-
-> *Add high-resolution screenshots here once captured:*
+## 📸 Screenshots
 
 | Landing Page Hero | Owner Analytics Dashboard |
-| :---: | :---: |
-| ![Landing Page Placeholder](https://via.placeholder.com/600x350/4f46e5/ffffff?text=Landing+Page+Hero+Visual) | ![Dashboard Placeholder](https://via.placeholder.com/600x350/0f172a/ffffff?text=Analytics+Dashboard+Overview) |
+|---|---|
+| ![Landing Page Hero](./screenshots/landing-page-hero.jpeg) | ![Owner Dashboard](./screenshots/owner-dashboard.jpeg) |
 
 | Lead CRM & Detail Panel | Razorpay Checkout (Test Mode) |
-| :---: | :---: |
-| ![CRM Placeholder](https://via.placeholder.com/600x350/ffffff/0f172a?text=CRM+Leads+List+%26+Detail) | ![Razorpay Placeholder](https://via.placeholder.com/600x350/1e293b/ffffff?text=Razorpay+Simulated+Checkout) |
+|---|---|
+| ![Lead CRM Detail Panel](./screenshots/lead-crm-detail-panel.jpeg) | ![Razorpay Checkout Test Mode](./screenshots/razorpay-checkout.jpeg) |
 
 ---
 
