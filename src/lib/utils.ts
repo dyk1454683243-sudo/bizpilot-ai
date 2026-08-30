@@ -159,3 +159,20 @@ export function getGreeting(): string {
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
+
+/**
+ * Regrex Validation for Phone Number
+ */
+export function isValidIndianPhoneNumber(phone: string): boolean {
+  return /^(\+91)?[6-9]\d{9}$/.test(phone.trim());
+}
+
+export function normalizeIndianPhoneNumber(phone: string): string {
+  const value = phone.replace(/\s/g, '');
+
+  if (value.startsWith('+91')) {
+    return value;
+  }
+
+  return `+91${value}`;
+}

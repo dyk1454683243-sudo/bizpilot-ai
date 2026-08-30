@@ -1,11 +1,12 @@
-'use client';
+"use client";
 
-import { useState, type FormEvent } from 'react';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import { LEAD_STATUSES, LEAD_SOURCES } from '@/lib/constants';
-import { type Lead, type LeadStatus, type LeadSource } from '@/lib/types';
+import { useState, type FormEvent } from "react";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
+import { LEAD_STATUSES, LEAD_SOURCES } from "@/lib/constants";
+import { type Lead, type LeadStatus, type LeadSource } from "@/lib/types";
+import { isValidIndianPhoneNumber } from "@/lib/utils";
 
 interface LeadFormProps {
   onSubmit: (lead: Partial<Lead>) => void;
@@ -13,20 +14,34 @@ interface LeadFormProps {
   initialData?: Lead;
 }
 
-export default function LeadForm({ onSubmit, onClose, initialData }: LeadFormProps) {
-  const [name, setName] = useState(initialData?.name ?? '');
-  const [phone, setPhone] = useState(initialData?.phone ?? '');
-  const [email, setEmail] = useState(initialData?.email ?? '');
-  const [source, setSource] = useState<LeadSource>(initialData?.source ?? 'manual');
-  const [status, setStatus] = useState<LeadStatus>(initialData?.status ?? 'new');
-  const [serviceInterested, setServiceInterested] = useState(initialData?.serviceInterested ?? '');
-  const [notes, setNotes] = useState(initialData?.notes ?? '');
+export default function LeadForm({
+  onSubmit,
+  onClose,
+  initialData,
+}: LeadFormProps) {
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [phone, setPhone] = useState(initialData?.phone ?? "");
+  const [email, setEmail] = useState(initialData?.email ?? "");
+  const [source, setSource] = useState<LeadSource>(
+    initialData?.source ?? "manual",
+  );
+  const [status, setStatus] = useState<LeadStatus>(
+    initialData?.status ?? "new",
+  );
+  const [serviceInterested, setServiceInterested] = useState(
+    initialData?.serviceInterested ?? "",
+  );
+  const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
 
   function validate(): boolean {
     const errs: { name?: string; phone?: string } = {};
-    if (!name.trim()) errs.name = 'Name is required';
-    if (!phone.trim()) errs.phone = 'Phone number is required';
+    if (!name.trim()) errs.name = "Name is required";
+    if (!phone.trim()) {
+      errs.phone = "Phone number is required";
+    } else if (!isValidIndianPhoneNumber(phone)) {
+      errs.phone = "Phone number must be 10 digits";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -35,10 +50,18 @@ export default function LeadForm({ onSubmit, onClose, initialData }: LeadFormPro
     e.preventDefault();
     if (!validate()) return;
 
+    const cleanPhone = phone.replace(/\s/g, "");
+    const phoneNumber = cleanPhone.startsWith("+91")
+      ? cleanPhone.substring(3)
+      : cleanPhone;
+    const formattedPhone = `+91 ${phoneNumber.substring(
+      0,
+      5,
+    )} ${phoneNumber.substring(5)}`;
     onSubmit({
       ...(initialData && { id: initialData.id }),
       name: name.trim(),
-      phone: phone.trim(),
+      phone: formattedPhone,
       email: email.trim() || undefined,
       source,
       status,
@@ -66,7 +89,11 @@ export default function LeadForm({ onSubmit, onClose, initialData }: LeadFormPro
         placeholder="+91 98765 43210"
         type="tel"
         value={phone}
-        onChange={(e) => setPhone((e.target as HTMLInputElement).value)}
+        onChange={(e) => {
+          const value = (e.target as HTMLInputElement).value;
+          const filteredValue = value.replace(/[^0-9+\s]/g, "");
+          setPhone(filteredValue);
+        }}
         error={errors.phone}
       />
 
@@ -85,14 +112,24 @@ export default function LeadForm({ onSubmit, onClose, initialData }: LeadFormPro
         <Select
           label="Source"
           value={source}
-          onChange={(e) => setSource((e.target as HTMLSelectElement).value as LeadSource)}
-          options={LEAD_SOURCES.map((s) => ({ value: s.value, label: `${s.icon} ${s.label}` }))}
+          onChange={(e) =>
+            setSource((e.target as HTMLSelectElement).value as LeadSource)
+          }
+          options={LEAD_SOURCES.map((s) => ({
+            value: s.value,
+            label: `${s.icon} ${s.label}`,
+          }))}
         />
         <Select
           label="Status"
           value={status}
-          onChange={(e) => setStatus((e.target as HTMLSelectElement).value as LeadStatus)}
-          options={LEAD_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+          onChange={(e) =>
+            setStatus((e.target as HTMLSelectElement).value as LeadStatus)
+          }
+          options={LEAD_STATUSES.map((s) => ({
+            value: s.value,
+            label: s.label,
+          }))}
         />
       </div>
 
@@ -102,12 +139,17 @@ export default function LeadForm({ onSubmit, onClose, initialData }: LeadFormPro
         label="Service Interested"
         placeholder="e.g. JEE Coaching"
         value={serviceInterested}
-        onChange={(e) => setServiceInterested((e.target as HTMLInputElement).value)}
+        onChange={(e) =>
+          setServiceInterested((e.target as HTMLInputElement).value)
+        }
       />
 
       {/* Notes */}
       <div>
-        <label htmlFor="lead-notes" className="block text-sm font-medium text-slate-700 mb-1.5">
+        <label
+          htmlFor="lead-notes"
+          className="block text-sm font-medium text-slate-700 mb-1.5"
+        >
           Notes
         </label>
         <textarea
@@ -126,7 +168,7 @@ export default function LeadForm({ onSubmit, onClose, initialData }: LeadFormPro
           Cancel
         </Button>
         <Button type="submit" variant="primary">
-          {initialData ? 'Update Lead' : 'Add Lead'}
+          {initialData ? "Update Lead" : "Add Lead"}
         </Button>
       </div>
     </form>
