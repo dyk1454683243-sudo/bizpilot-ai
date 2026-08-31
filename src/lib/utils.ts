@@ -164,7 +164,7 @@ export function getGreeting(): string {
  * Regrex Validation for Phone Number
  */
 export function isValidIndianPhoneNumber(phone: string): boolean {
-  return /^(\+91)?[6-9]\d{9}$/.test(phone.trim());
+  return /^(\+91)?[6-9]\d{9}$/.test(phone.replace(/\s/g, ""));
 }
 
 export function normalizeIndianPhoneNumber(phone: string): string {
