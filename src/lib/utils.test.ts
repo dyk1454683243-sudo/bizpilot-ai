@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 
-import { getToday, toLocalDateString } from './utils';
+import { getToday, toLocalDateString } from './local-date.ts';
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
